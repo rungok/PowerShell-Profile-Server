@@ -15,18 +15,19 @@ Here is a full list of what it will try to do:
      - notepadplusplus (Extended Notepad app with colorizing of text-types and a lot of functions)
      - nerd-fonts-robotomono (good font with extended set of terminal icons)
 - VCLibs and .NET v4.8 (runtime libraries for C and .NET code)
-- Aliases to ease the everyday life of ppl switching often between Linux and Windows (grep and tail works just as in Linux) 
+- Aliases to ease the everyday life of ppl switching often between Linux and Windows (grep and tail works just as in Linux)
+-----------------------------------------------------------------------------------------------------------------------------
 
 When it has installed all its components, your Powershell Terminal will look and feel almost as good as a Linux terminal.
-This fork is tailored to work better for vanilla Windows Server 2022 and simplified to be only 1 powershell-file you can paste in
-manually if you want for security reasons.
+This version (compared to Titus's version) is tailored to work better for vanilla Windows Server and simplified to be only 1 significant powershell-script you can paste in
+manually if you have security-blocks blocking ps-files or whatever.
 
 This script will respect your server even if it's running in production. It will NOT do anything recless like rebooting the OS or replace already installed software/libraries (so you can let the first round run safely while you eat lunch). All versions of the files/software downloaded will be stable versions and downloaded from official Microsoft and Chocolatey main repo. If you want to run this on an offline server, that's totally possible. But you need to transfer all downloaded files manually from an online server that has ran the script before, and copy those files into your logged on users default download catalog. Choco-files are normally placed under C:\ProgramData\chocolatey\.
 
-This script works
-   2019 Windows Terminal doesn't work on server 2019 or older so script will skip trying to download or install that one, but the rest will work fine under standard console and PSv7.x.
-   2022 Windows Terminal is not officially supported on this OS, but this script will install it anyway (Windows Terminal does a much better job rendering and has split and tab features).
-   2025 Windows Terminal is included in Windows 2025, but the rest will install even faster and work fine in the included Terminal.
+This script is tested on:
+   Windows Server 2019: Windows Terminal doesn't work on server 2019 or older, so script will skip trying to download or install that one. The rest will work almost as fine under standard console and PSv7.x.
+   Windows Server 2022: Windows Terminal is not officially supported on this OS, but this script will install it anyway incl. required libraries (Windows Terminal does a much better job rendering and has split and tab features).
+   Windows Server 2025: Windows Terminal is included in Windows 2025, but the rest will install even faster and work fine in the included Terminal.
 
 ## ⚡ One Line Install (Elevated PowerShell Recommended)
 
@@ -47,4 +48,4 @@ you need to manually change these settings by pressing CTRL + , in Windows Termi
    
 ## Customize this profile
 
-Now, enjoy your enhanced and stylish PowerShell experience! 🚀
+There are no license restrictions on this code, so copy, fork, modify, make your own version or whatever you want. Enjoy your enhanced and stylish PowerShell experience! 🚀
