@@ -25,9 +25,9 @@ manually if you have security-blocks blocking ps-files or whatever.
 This script will respect your server even if it's running in production. It will NOT do anything recless like rebooting the OS or replace already installed software/libraries (so you can let the first round run safely while you eat lunch). All versions of the files/software downloaded will be stable versions and downloaded from official Microsoft and Chocolatey main repo. If you want to run this on an offline server, that's totally possible. But you need to transfer all downloaded files manually from an online server that has ran the script before, and copy those files into your logged on users default download catalog. Choco-files are normally placed under C:\ProgramData\chocolatey\.
 
 This script is tested on:
-   Windows Server 2019: Windows Terminal doesn't work on server 2019 or older, so script will skip trying to download or install that one. The rest will work almost as fine under standard console and PSv7.x.
-   Windows Server 2022: Windows Terminal is not officially supported on this OS, but this script will install it anyway incl. required libraries (Windows Terminal does a much better job rendering and has split and tab features).
-   Windows Server 2025: Windows Terminal is included in Windows 2025, but the rest will install even faster and work fine in the included Terminal.
+ - Windows Server 2019: Windows Terminal doesn't work on server 2019 or older, so script will skip trying to download or install that one. The rest will work almost as fine under standard console and PSv7.x.
+ - Windows Server 2022: Windows Terminal is not officially supported on this OS, but this script will install it anyway incl. required libraries (Windows Terminal does a much better job rendering and has split and tab features).
+ - Windows Server 2025: Windows Terminal is included in Windows 2025, but the rest will install even faster and work fine in the included Terminal.
 
 ## ⚡ One Line Install (Elevated PowerShell Recommended)
 
