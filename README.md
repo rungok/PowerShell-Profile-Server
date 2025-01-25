@@ -1,4 +1,4 @@
-# 🎨 PowerShell Profile Server Pimping
+# :unicorn: PowerShell Profile Server Pimping
 Have you ever tried to install the excellent Microsoft Windows Terminal on a Windows Server?
 Well, you simply don't want to go through that pain twice. This powershell startup profile script does that for you including all the prereqs required for it to work on Windows 2022.
 Furthermore, it will and install a couple of other powershell and terminal enhancements for you if they are not installed from before.
@@ -17,8 +17,11 @@ Here is a full list of what it will try to do:
 - Aliases to ease the everyday life of ppl switching often between Linux and Windows (grep and tail works just as in Linux)
 -----------------------------------------------------------------------------------------------------------------------------
 
+## 🎨 PreView
+![image](https://github.com/user-attachments/assets/d45ff30c-43d8-485a-a826-c637f8ea0e38)
+
 When it has installed all its components, your Powershell Terminal will look and feel almost as good as a Linux terminal.
-This version (compared to Titus's version) is tailored to work better for vanilla Windows Server and simplified to be only 1 significant powershell-script you can paste in
+This version (compared to Titus's version) is tailored to work better for Windows Server and simplified to be only 1 significant powershell-script you can paste in
 manually if you have security-blocks blocking ps-files or whatever.
 
 This script will respect your server even if it's running in production. It will NOT do anything recless like rebooting the OS or replace already installed software/libraries (so you can let the first round run safely while you eat lunch). All versions of the files/software downloaded will be stable versions and downloaded from official Microsoft and Chocolatey main repo. If you want to run this on an offline server, that's totally possible. But you need to transfer all downloaded files manually from an online server that has ran the script before, and copy those files into your logged on users default download catalog. Choco-files are normally placed under C:\ProgramData\chocolatey\.
