@@ -3,8 +3,13 @@ Have you ever tried to install the excellent Microsoft Windows Terminal on a Win
 Well, you simply don't want to go through that pain twice. This powershell startup profile script does that for you including all the prereqs required for it to work on Windows 2022.
 Furthermore, it will and install a couple of other powershell and terminal enhancements for you if they are not installed from before.
 
-Here is a full list of what it will try to do:
-----------------------------------------------------------------------------------------------------------------------------
+## ⚡ One Line Install (Elevated PowerShell Recommended)
+Execute the following command in an elevated PowerShell window to install the PowerShell profile:
+```
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;irm "https://github.com/rungok/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1" | iex
+```
+
+## :male_detective: Here is a full list of what it will try to do:
 - NuGet (to install Terminal-Icons in directory listings)
    - Terminal-Icons powershell module
    - WinFetch (neofetch-clone for Windows)
@@ -32,13 +37,7 @@ This script is tested on:
  - Windows Server 2022: Windows Terminal is not officially supported on this OS, but this script will install it anyway incl. required libraries (Windows Terminal does a much better job rendering and has split and tab features).
  - Windows Server 2025: Windows Terminal is included in Windows 2025, but the rest will install even faster and work fine in the included Terminal.
 
-## ⚡ One Line Install (Elevated PowerShell Recommended)
 
-Execute the following command in an elevated PowerShell window to install the PowerShell profile:
-
-```
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;irm "https://github.com/rungok/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1" | iex
-```
 
 ## 🛠️ Fix the terminal config
 
