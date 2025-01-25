@@ -1,7 +1,7 @@
 ################################################################################################
-$tit = 'PowerShell-Profile-Server Pimp v2.3 by RUNE GOKS0R'
+$tit = 'PowerShell-Profile-Server Pimp v2.3 by GOKS0R UTVIKLING'
 $githubUser = 'rungok'
-$PoshTheme = 'markbull'  # Write Get-PoshThemes to see all themes in action
+$PoshTheme = 'atomic'  # Write Get-PoshThemes to see all themes in action
 #  This script will try to install Microsoft Windows Terminal with required compnents
 #  in additions to Oh-My-Posh and other enhancments so even some Linux-commands will work.
 #  Then it will insert this script where it should be placed, which is the path
@@ -12,7 +12,7 @@ $PoshTheme = 'markbull'  # Write Get-PoshThemes to see all themes in action
 
 Write-Host("`n         .--------< ") -f white -nonewline
 Write-Host($tit) -f Cyan -nonewline
-Write-Host(" >---------------------.") -f white
+Write-Host(" >----------------.") -f white
 Write-Host("         '-----------------------------------------------------------------------------------'`n") -f white
 
 $execPolicy = Get-ExecutionPolicy
