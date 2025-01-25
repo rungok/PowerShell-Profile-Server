@@ -1,5 +1,4 @@
-# 🎨 PowerShell Profile Server (Pimping PowerShell on Server)
-
+# 🎨 PowerShell Profile Server Pimping
 Have you ever tried to install the excellent Microsoft Windows Terminal on a Windows Server?
 Well, you simply don't want to go through that pain twice. This powershell startup profile script does that for you including all the prereqs required for it to work on Windows 2022.
 Furthermore, it will and install a couple of other powershell and terminal enhancements for you if they are not installed from before.
