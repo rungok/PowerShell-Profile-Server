@@ -1,5 +1,5 @@
 ################################################################################################
-$tit = 'PowerShell-Profile-Server Pimp v2.3 by GOKS0R UTVIKLING'
+$tit = 'PowerShell-Profile-Server Pimp v2.4 by GOKS0R UTVIKLING'
 $githubUser = 'rungok'
 $PoshTheme = 'atomic'  # Write Get-PoshThemes to see all themes in action
 #  This script will try to install Microsoft Windows Terminal with required compnents
@@ -42,7 +42,7 @@ function Write-Detect {
 	Write-host ("✅") -nonewline -f DarkGreen
 	} else { Write-host "v" -nonewline -b DarkGreen -f White } 
     Write-host " $Software detected.                     "  -f Green
-    If ($PSVersionTable.PSVersion.Major -gt 6) { Write-host "`e[1F" -nonewline }
+	Write-host "$([char]0x1b)[1F" -nonewline
 }
 
 ################################################################################
@@ -598,7 +598,7 @@ Use 'Show-Help' to display this help message.
 }
 
 # Install and execute WinFetch (neofetch-port to powershell) - requires PSGallery
-Write-host "`e[1F" -nonewline
+Write-host "$([char]0x1b)[1F" -nonewline
 if (-not(Get-InstalledScript -Name winfetch -ErrorAction SilentlyContinue)) { Install-Script winfetch -Force }
 winfetch
 Write-Host "Write 'Show-Help' to display overview of enhanced PowerShell commands in this setup" -f DarkGreen
