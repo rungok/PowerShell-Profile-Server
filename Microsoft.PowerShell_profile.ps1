@@ -1,19 +1,29 @@
-################################################################################################
-$tit = 'PowerShell-Profile-Server Pimp v2.4 by GOKS0R UTVIKLING'
-$githubUser = 'rungok'
-$PoshTheme = 'atomic'  # Write Get-PoshThemes to see all themes in action
-#  This script will try to install Microsoft Windows Terminal with required compnents
-#  in additions to Oh-My-Posh and other enhancments so even some Linux-commands will work.
-#  Then it will insert this script where it should be placed, which is the path
-#  of $PROFILE. Write $PROFILE in Powershell if you wonder where it is. Usually in your
-#  $HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1
-#  Change your font to RobotoMono Size 10 and set font rendering to ClearType for icons to work.
-################################################################################################
+#####################################################################################################
+$tit = 'PowerShell-Profile-Server Pimp v2.6 by GOKS0R DEVELOPMENT'									#
+$githubUser = 'rungok'																				#
+$PoshTheme = 'quick-term'  # Write Get-PoshThemes to see all themes in action						#
+$FFConfig = $env:UserProfile + '\.config\fastfetch\frames.jsonc'									#
+$FFlogo = $env:UserProfile + '\.config\fastfetch\indianai_cropped2.png' # Specify logo path			#
+$FFlogoWidth = 60  # Width  in number of chars														#
+$FFlogoHeight = 43 # Height in number of chars														#
+#																									#
+#  This script will try to install Microsoft Windows Terminal with required components				#
+#  in additions to Oh-My-Posh and other enhancments so even some Linux-commands will work.			#
+#  Then it will insert this script where it should be placed, which is the path						#
+#  of $PROFILE. Write $PROFILE in Powershell if you wonder where it is. Usually in your				#
+#  $HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1										#
+#																									#
+#  Manual changes needed after install:																#
+#  Change your font to RobotoMono Size 10 and set font rendering to ClearType for icon rendering	#
+#  Write Fastfetch --print-logos to see all logos													#
+#  When using picture, it will be converted to raw sixel format to work in Windows Terminal,		#
+#  For some reason, it can payoff to resize picture out of aspect to 90% of its height. 			#
+#####################################################################################################
 
 Write-Host("`n         .--------< ") -f white -nonewline
 Write-Host($tit) -f Cyan -nonewline
 Write-Host(" >----------------.") -f white
-Write-Host("         '-----------------------------------------------------------------------------------'`n") -f white
+Write-Host("         '-------------------------------------------------------------------------------------'`n") -f white
 
 $execPolicy = Get-ExecutionPolicy
 if ($execPolicy -ne "RemoteSigned") {
@@ -50,7 +60,6 @@ function Write-Detect {
 ################################################################################
 
 
-
 # Install NuGet to ensure the other packages can be installed.
 $nugetProvider = Get-PackageProvider | Select-Object Name | Where-Object Name -match NuGet
 if (-not $nugetProvider) {
@@ -69,6 +78,12 @@ if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
     Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
 }
 Import-Module -Name Terminal-Icons
+
+### Detect and Install ConvertTo-Sixel module
+if (-not (Get-Module -ListAvailable -Name Sixel)) {
+    Install-Module -Name Sixel -Scope CurrentUser -Force -SkipPublisherCheck
+}
+Import-Module -Name Sixel
 
 ##### Check if .net v4.8 is installed #### 
 $dotnet = (Get-ItemPropertyValue -LiteralPath 'HKLM:SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -Name Release) -ge 528040
@@ -131,6 +146,7 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
 	} else { Write-Host ("❌ Terminal must be started in elevated mode to install Zoxide. Fuzzy shell will not be activated until this is done.") -f Cyan }
 }
 
+
 ####### Install Oh-My-Posh if not installed and shell is started in administrative mode ########
 if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
 	Write-Detect "Oh-My-Posh"
@@ -142,7 +158,6 @@ if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
 			choco install Oh-My-Posh -y
 			Write-Host "Oh-My-Posh installed successfully. Initializing..." -ForegroundColor DarkGreen
    			refreshenv
-   			# Invoke-Expression (& { (Oh-My-Posh init powershell | Out-String) })
 		} catch {
 			Write-Error "❌ Failed to install Oh-My-Posh. Error: $_"
 		}
@@ -152,7 +167,6 @@ if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
 ####### Install Notepad++ if not installed and shell is started in administrative mode ########
 if (Get-Command Notepad++ -ErrorAction SilentlyContinue) {
 	Write-Detect "Notepad++"
-	# Invoke-Expression (& { (Oh-My-Posh init --cmd cd powershell | Out-String) })
 } else {
 	if ($isAdmin) {
 		Write-Host "❌ Notepad++ not installed. Attempting to install via " -nonewline -f Cyan
@@ -166,6 +180,41 @@ if (Get-Command Notepad++ -ErrorAction SilentlyContinue) {
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install Notepad++.") -f Cyan }
 }
 
+
+####### Install ImageMagick if not installed and shell is started in administrative mode ########
+if (Get-Command Magick -ErrorAction SilentlyContinue) {
+	Write-Detect "ImageMagick"
+} else {
+	if ($isAdmin) {
+		Write-Host "❌ ImageMagick not installed. Attempting to install via " -nonewline -f Cyan
+		try {
+			choco install imagemagick -y
+			Write-Host "ImageMagick installed successfully. Initializing..." -ForegroundColor DarkGreen
+   			refreshenv
+		} catch {
+			Write-Error "❌ Failed to install ImageMagick. Error: $_"
+		}
+	} else { Write-Host ("❌ Powershell must be started in elevated mode to install ImageMagick.") -f Cyan }
+}
+
+
+####### Install FastFetch if not installed and shell is started in administrative mode ########
+if (Get-Command fastfetch -ErrorAction SilentlyContinue) {
+	Write-Detect "FastFetch"
+} else {
+	if ($isAdmin) {
+		Write-Host "❌ FastFetch not installed. Attempting to install via " -nonewline -f Cyan
+		try {
+			choco install fastfetch -y
+			Write-Host "FastFetch installed successfully. Initializing..." -ForegroundColor DarkGreen
+   			refreshenv
+		} catch {
+			Write-Error "❌ Failed to install FastFetch. Error: $_"
+		}
+	} else { Write-Host ("❌ Powershell must be started in elevated mode to install FastFetch.") -f Cyan }
+}
+
+
 #### Install Cascadia Mono (default Terminal Nerd Font)
 If (choco list --local-only --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version | Select-Object Name | Where-Object Name -match robotomono) {
 	Write-Detect "RobotoMono Nerd Font"
@@ -173,7 +222,6 @@ If (choco list --local-only --limit-output | ConvertFrom-Csv -Delimiter '|' -Hea
  	Write-Host "❌ RobotoMono nerd font not installed. Attempting to install via " -nonewline -f Cyan
  	choco install nerd-fonts-robotomono -y
 }
-
 
 ###########################################################
 ####### Profile creation or update if not present #########
@@ -315,7 +363,7 @@ $EDITOR = if (Test-CommandExists nvim) { 'nvim' }
 Set-Alias -Name vim -Value $EDITOR
 
 function Edit-Profile {
-    vim $PROFILE.CurrentUserAllHosts
+    vim $PROFILE
 }
 function touch($file) { "" | Out-File $file -Encoding ASCII }
 function ff($name) {
@@ -541,65 +589,84 @@ Get-Theme
 function Show-Help {
     @"
 Help for $tit
-.======================================================================.
-| Path - Prints out current users Path like MS-DOS.                    |
-| PathX - Prints out current users Path like MS-DOS in listed format.  |
-| np - Notepad++ full qualified path. np $PROFILE to edit this script. |
-| vi - same as np                                                      |
-| hf - Full commandline history (also Get-FullHistory works)           |
-| env - Prints out all environment variables (Get-ChildItam env:)      |
-'----------------------------------------------------------------------'
-
----------------------- original commands from forked "powershell-profile" ---------------------------------------------
-Update-Profile - Checks for profile updates from a remote repository and updates if necessary.
-Update-PowerShell - Checks for the latest PowerShell release and updates if a new version is available.
-Edit-Profile - Opens the current user's profile for editing using the configured editor.
-touch <file> - Creates a new empty file.
-ff <name> - Finds files recursively with the specified name.
-Get-PubIP - Retrieves the public IP address of the machine.
-winutil - Runs the WinUtil script from Chris Titus Tech.
-uptime - Displays the system uptime.
-reload-profile - Reloads the current user's PowerShell profile.
-unzip <file> - Extracts a zip file to the current directory.
-hb <file> - Uploads the specified file's content to a hastebin-like service and returns the URL.
-grep <regex> [dir] - Searches for a regex pattern in files within the specified directory or from the pipeline input.
-df - Displays information about volumes.
-sed <file> <find> <replace> - Replaces text in a file.
-which <name> - Shows the path of the command.
-export <name> <value> - Sets an environment variable.
-pkill <name> - Kills processes by name.
-pgrep <name> - Lists processes by name.
-head <path> [n] - Displays the first n lines of a file (default 10).
-tail <path> [n] - Displays the last n lines of a file (default 10).
-nf <name> - Creates a new file with the specified name.
-mkcd <dir> - Creates and changes to a new directory.
-docs - Changes the current directory to the user's Documents folder.
-dtop - Changes the current directory to the user's Desktop folder.
-ep - Opens the profile for editing.
-k9 <name> - Kills a process by name.
-la - Lists all files in the current directory with detailed formatting.
-ll - Lists all files, including hidden, in the current directory with detailed formatting.
-gs - Shortcut for 'git status'.
-ga - Shortcut for 'git add .'.
-gc <message> - Shortcut for 'git commit -m'.
-gp - Shortcut for 'git push'.
-g - Changes to the GitHub directory.
-gcom <message> - Adds all changes and commits with the specified message.
-lazyg <message> - Adds all changes, commits with the specified message, and pushes to the remote repository.
-sysinfo - Displays detailed system information.
-flushdns - Clears the DNS cache.
-cpy <text> - Copies the specified text to the clipboard.
-pst - Retrieves text from the clipboard.
-z - ehanced zoxide CD (change directory) that guess which directory you want to change to based on history.
-Get-PoshThemes - See overview of all Oh-My-Posh themes in action based on your current folder
--------------------------------------------------------------------------------------------------------------------------
+`e[33m.=======================================================================================================================.
+`e[33m|`e[37m Path - Prints out current users Path like MS-DOS.																		`e[121G`e[33m|
+`e[33m|`e[37m PathX - Prints out current users Path like MS-DOS in listed format.													`e[121G`e[33m|
+`e[33m|`e[37m np - Notepad++ full qualified path. Write np "$"PROFILE to edit script.												`e[121G`e[33m|
+`e[33m|`e[37m vi - same as np																										`e[121G`e[33m|
+`e[33m|`e[37m hf - Full commandline history (also Get-FullHistory works)           													`e[121G`e[33m|
+`e[33m|`e[37m env - Prints out all environment variables (Get-ChildItam env:)      													`e[121G`e[33m|
+`e[33m|`e[37m Update-Profile - Checks for profile updates from a remote repository and updates if necessary.						`e[121G`e[33m|
+`e[33m|`e[37m Update-PowerShell - Checks for the latest PowerShell release and updates if a new version is available.				`e[121G`e[33m|
+`e[33m|`e[37m Edit-Profile - Opens the current user's profile for editing using the configured editor.								`e[121G`e[33m|
+`e[33m|`e[37m touch <file> - Creates a new empty file.																				`e[121G`e[33m|
+`e[33m|`e[37m ff <name> - Finds files recursively with the specified name.															`e[121G`e[33m|
+`e[33m|`e[37m Get-PubIP - Retrieves the public IP address of the machine.															`e[121G`e[33m|
+`e[33m|`e[37m winutil - Runs the WinUtil script from Chris Titus Tech.																`e[121G`e[33m|
+`e[33m|`e[37m uptime - Displays the system uptime.																					`e[121G`e[33m|
+`e[33m|`e[37m reload-profile - Reloads the current user's PowerShell profile.														`e[121G`e[33m|
+`e[33m|`e[37m unzip <file> - Extracts a zip file to the current directory.															`e[121G`e[33m|
+`e[33m|`e[37m hb <file> - Uploads the specified file's content to a hastebin-like service and returns the URL.						`e[121G`e[33m|
+`e[33m|`e[37m grep <regex> [dir] - Searches for a regex pattern in files within the specified directory or from the pipeline input.	`e[121G`e[33m|
+`e[33m|`e[37m df - Displays information about volumes.																				`e[121G`e[33m|
+`e[33m|`e[37m sed <file> <find> <replace> - Replaces text in a file.																`e[121G`e[33m|
+`e[33m|`e[37m which <name> - Shows the path of the command.																			`e[121G`e[33m|
+`e[33m|`e[37m export <name> <value> - Sets an environment variable.																	`e[121G`e[33m|
+`e[33m|`e[37m pkill <name> - Kills processes by name.																				`e[121G`e[33m|
+`e[33m|`e[37m pgrep <name> - Lists processes by name.																				`e[121G`e[33m|
+`e[33m|`e[37m head <path> [n] - Displays the first n lines of a file (default 10).													`e[121G`e[33m|
+`e[33m|`e[37m tail <path> [n] - Displays the last n lines of a file (default 10).													`e[121G`e[33m|
+`e[33m|`e[37m nf <name> - Creates a new file with the specified name.																`e[121G`e[33m|
+`e[33m|`e[37m mkcd <dir> - Creates and changes to a new directory.																	`e[121G`e[33m|
+`e[33m|`e[37m docs - Changes the current directory to the user's Documents folder.													`e[121G`e[33m|
+`e[33m|`e[37m dtop - Changes the current directory to the user's Desktop folder.													`e[121G`e[33m|
+`e[33m|`e[37m ep - Opens the profile for editing.																					`e[121G`e[33m|
+`e[33m|`e[37m k9 <name> - Kills a process by name.																					`e[121G`e[33m|
+`e[33m|`e[37m la - Lists all files in the current directory with detailed formatting.												`e[121G`e[33m|
+`e[33m|`e[37m ll - Lists all files, including hidden, in the current directory with detailed formatting.							`e[121G`e[33m|
+`e[33m|`e[37m gs - Shortcut for 'git status'.																						`e[121G`e[33m|
+`e[33m|`e[37m ga - Shortcut for 'git add .'.																						`e[121G`e[33m|
+`e[33m|`e[37m gc <message> - Shortcut for 'git commit -m'.																			`e[121G`e[33m|
+`e[33m|`e[37m gp - Shortcut for 'git push'.																							`e[121G`e[33m|
+`e[33m|`e[37m g - Changes to the GitHub directory.																					`e[121G`e[33m|
+`e[33m|`e[37m gcom <message> - Adds all changes and commits with the specified message.												`e[121G`e[33m|
+`e[33m|`e[37m lazyg <message> - Adds all changes, commits with the specified message, and pushes to the remote repository.			`e[121G`e[33m|
+`e[33m|`e[37m sysinfo - Displays detailed system information.																		`e[121G`e[33m|
+`e[33m|`e[37m flushdns - Clears the DNS cache.																						`e[121G`e[33m|
+`e[33m|`e[37m cpy <text> - Copies the specified text to the clipboard.																`e[121G`e[33m|
+`e[33m|`e[37m pst - Retrieves text from the clipboard.																				`e[121G`e[33m|
+`e[33m|`e[37m z - ehanced zoxide CD (change directory) that guess which directory you want to change to based on history.			`e[121G`e[33m|
+`e[33m|`e[37m Get-PoshThemes - See overview of all Oh-My-Posh themes in action based on your current folder							`e[121G`e[33m|
+'-----------------------------------------------------------------------------------------------------------------------'
 Use 'Show-Help' to display this help message.
 "@
 }
 
-# Install and execute WinFetch (neofetch-port to powershell) - requires PSGallery
-Write-host "$([char]0x1b)[1F" -nonewline
-if (-not(Get-InstalledScript -Name winfetch -ErrorAction SilentlyContinue)) { Install-Script winfetch -Force }
-winfetch
+
+# Write-host "$([char]0x1b)[1F" -nonewline
+Write-host "                                                                "
+# Check if $FFLogo exist and convert $FFLogo to $FFLogo + ".sixel" if it doesn't
+$SixLogo = $FFlogo + ".sixel"
+if (!(Test-Path -Path $SixLogo -PathType Leaf)) {
+	ConvertTo-Sixel $FFlogo -Width $FFlogoWidth -Height $FFlogoHeight > $SixLogo
+} # convert image to sixel format
+
+# Executing FastFetch (neofetch-port but faster compiled in C++ to powershell)
+fastfetch --raw $SixLogo --logo-width $FFlogoWidth --logo-height $FFlogoHeight --config $FFConfig
+# optionally --logo-width 55 --logo-height 28 --logo-padding-top 1 --logo-padding 5 (--logo-width $NUMBER_OF_COLUMNS_USED --logo-height $NUMBER_OF_ROWS_USED)
+# optionally2 for config-file usually designed --config "C:\Users\runeg\OneDrive - Dustin Group\Documents\PowerShell\Scripts\Bash\fastfetch\frames.jsonc"
+
+Write-host "                                                                "
 Write-Host "Write 'Show-Help' to display overview of enhanced PowerShell commands in this setup" -f DarkGreen
+#############################################################################################################################################################
+#
+#	Changes last few versions
+#
+#	Version 2.6
+#	- ConvertTo-Sixel module added (since Windows Terminal now has support for real inline pictures like kitty on Linux, but in sixel format)
+#	- FastFetch options modified to handle converted sixel picture via -raw option with size parameters
+#
+#	Version 2.5
+#	- Changed from using winfetch to fastfetch (much more powerful and faster and winfetch might have been abandonded since it also stopped working)
+#
 
