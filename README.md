@@ -12,7 +12,7 @@ Execute the following command in an elevated PowerShell window to install the Po
 ## :male_detective: Here is a full list of what it will try to do:
 - NuGet (to install Terminal-Icons in directory listings)
    - Terminal-Icons powershell module
-   - WinFetch (neofetch-clone for Windows)
+   - FastFetch (neofetch-clone on steroids for Windows) with example config and profile picture
 - Powershell v7.x
 - Chocolatey Packet Manager (winget replacement that works on server OS) with following packages
      - zoxide fuzzy shell (PowerShell enhancement with predictive writing and easier folder changes)
