@@ -222,9 +222,9 @@ if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
         $profilePath = ""
 	    $profilePath = $env:userprofile + "\.config\fastfetch"
 	    if (!(Test-Path -Path $profilePath)) { New-Item -Path $profilePath -ItemType "directory" }
-     	    Invoke-RestMethod https://github.com/$githubUser/PowerShell-Profile-Server/blob/main/frames.jsonc -OutFile $FFConfig
+     	    Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/frames.jsonc -OutFile $FFConfig
             Write-Host "FastFetch config-file @ [$FFConfig] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
-			Invoke-RestMethod https://github.com/$githubUser/PowerShell-Profile-Server/blob/main/indianai_cropped2.png -OutFile $FFlogo
+			Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/indianai_cropped2.png -OutFile $FFlogo
             Write-Host "FastFetch profile-pic @ [$FFlogo] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
     	}
     catch { Write-Error "Failed to create or update the profile. Error: $_" }
