@@ -259,8 +259,11 @@ if (!(Test-Path -Path $PROFILE -PathType Leaf)) {
 
 function Update-Profile {
     try {
+		Write-Host "Trying to download latest profile from GitHub. You old will be renamed to <filename><timestamp>.ps1 if it exist." -f Cyan
+		Write-Host "Move any custom config at top of old file manually to the new if you had some special picture or FastFetch config." -f Cyan
+		Write-Host ""
 		$TimeMarker = Get-Date -Format "ddMMyyyy_HHmm"
-		$Bakfile = "Microsoft.PowerShell_profile_"+$TimeMarket+".ps1.bak"
+		$Bakfile = "Microsoft.PowerShell_profile_"+$TimeMarket+".ps1"
         Get-Item -Path $PROFILE | Move-Item -Destination $Bakfile -Force
         Invoke-RestMethod https://github.com/$githubUser/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1 -OutFile $PROFILE
         Write-Host "The profile has been created at " -f Cyan -nonewline;Write-Host $PROFILE;Write-Host "     and old profile renamed to " -f Cyan -nonewline;Write-Host $Bakfile -f DarkGray
