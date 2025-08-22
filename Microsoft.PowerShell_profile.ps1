@@ -259,9 +259,11 @@ if (!(Test-Path -Path $PROFILE -PathType Leaf)) {
 
 function Update-Profile {
     try {
-        Get-Item -Path $PROFILE | Move-Item -Destination "Microsoft.PowerShell_profile_old.ps1" -Force
+		$TimeMarker = Get-Date -Format "ddMMyyyy_HHmm"
+		$Bakfile = "Microsoft.PowerShell_profile_"+$TimeMarket+".ps1.bak"
+        Get-Item -Path $PROFILE | Move-Item -Destination $Bakfile -Force
         Invoke-RestMethod https://github.com/$githubUser/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1 -OutFile $PROFILE
-        Write-Host "The profile @ [$PROFILE] has been created and old profile renamed to Microsoft.PowerShell_profile_old.ps1." -f Cyan
+        Write-Host "The profile has been created at " -f Cyan -nonewline;Write-Host $PROFILE;Write-Host "     and old profile renamed to " -f Cyan -nonewline;Write-Host $Bakfile -f DarkGray
     }
     catch {
         Write-Error "Failed to backup and update the profile. Error: $_"
