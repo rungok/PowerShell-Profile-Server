@@ -220,7 +220,7 @@ if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
     try {
         # Detect Version of PowerShell & Create Profile directories if they do not exist.
         $profilePath = ""
-	    $profilePath = "$env:userprofile\Documents\.config\fastfetch"
+	    $profilePath = $env:userprofile + "\.config\fastfetch"
 	    if (!(Test-Path -Path $profilePath)) { New-Item -Path $profilePath -ItemType "directory" }
      	    Invoke-RestMethod https://github.com/$githubUser/PowerShell-Profile-Server/blob/main/frames.jsonc -OutFile $FFConfig
             Write-Host "FastFetch config-file @ [$FFConfig] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
