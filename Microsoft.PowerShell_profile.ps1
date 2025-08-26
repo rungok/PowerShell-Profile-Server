@@ -1,7 +1,7 @@
 #####################################################################################################
-$tit = 'PowerShell-Profile-Server Pimp v2.6 by GOKS0R DEVELOPMENT'									#
+$tit = 'PowerShell-Profile-Server Pimp v2.7 by GOKS0R DEVELOPMENT'									#
 $githubUser = 'rungok'																				#
-$PoshTheme = 'quick-term'  # Write Get-PoshThemes to see all themes in action						#
+$PoshTheme = 'markbull'  # Write Get-PoshThemes to see all themes in action							#
 $FFConfig = $env:UserProfile + '\.config\fastfetch\frames.jsonc'									#
 $FFlogo = $env:UserProfile + '\.config\fastfetch\indianai_cropped2.png' # Specify logo path			#
 $FFlogoWidth = 60  # Width  in number of chars														#
