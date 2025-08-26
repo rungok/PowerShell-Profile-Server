@@ -1,7 +1,8 @@
 # :unicorn: PowerShell Profile Server Pimping
-Have you ever tried to install the excellent Microsoft Windows Terminal on a Windows Server?
+Have you ever tried to install the excellent Microsoft Windows Terminal on a Windows Server 2022 or 2019?
 Well, you simply don't want to go through that pain twice. This powershell startup profile script does that for you including all the prereqs required for it to work on Windows 2022.
-Furthermore, it will and install a couple of other powershell and terminal enhancements for you if they are not installed from before.
+Furthermore, it will also install a couple of other components like Powershell v7.x, Notepad++ and terminal enhancements like Oh-My-Posh for you if they are not installed from before.
+Script works just aswell on most client Windows versions.
 
 ## ⚡ One Line Install (Elevated PowerShell Recommended)
 Execute the following command in an elevated PowerShell window to install the PowerShell profile:
@@ -17,9 +18,9 @@ Execute the following command in an elevated PowerShell window to install the Po
 - Chocolatey Packet Manager (winget replacement that works on server OS) with following packages
      - zoxide fuzzy shell (PowerShell enhancement with predictive writing and easier folder changes)
      - Oh-My-Posh beautiful prompt with colors (and ribbons if you want)
-     - notepadplusplus (Extended Notepad app with colorizing of text-types and a lot of functions)
+     - Notepad++ (Extended Notepad app with colorizing of text-types and a lot of functions)
      - nerd-fonts-robotomono (good font with extended set of terminal icons)
-- VCLibs and .NET v4.8 (runtime libraries for C and .NET code)
+- VCLibs and .NET v4.8 (runtime libraries for C and .NET code needed for Windows Terminal to work)
 - Aliases to ease the everyday life of ppl switching often between Linux and Windows (grep and tail works just as in Linux)
 -----------------------------------------------------------------------------------------------------------------------------
 
@@ -36,6 +37,7 @@ This script is tested on:
  - Windows Server 2019: Windows Terminal doesn't work on server 2019 or older, so script will skip trying to download or install that one. The rest will work almost as fine under standard console and PSv7.x.
  - Windows Server 2022: Windows Terminal is not officially supported on this OS, but this script will install it anyway incl. required libraries (Windows Terminal does a much better job rendering and has split and tab features).
  - Windows Server 2025: Windows Terminal is included in Windows 2025, but the rest will install even faster and work fine in the included Terminal.
+ - Windows 11: Windows Terminal is included in Windows 11, but it will detect that and continue with the other enchancements just as on Windows 2025.
 
 
 
