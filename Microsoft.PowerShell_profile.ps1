@@ -669,6 +669,8 @@ Write-host "                                                                "
 $SixLogo = $FFlogo + ".sixel"
 if ((Test-Path -Path $FFLogo -PathType Leaf)) {
 	if (!(Test-Path -Path $SixLogo -PathType Leaf)) {
+		$SixObject = Get-Item -Path $Sixlogo
+		If ($SixObject.Length -eq 0) { Remove-Item -Path $Sixlogo -Force }
 		ConvertTo-Sixel $FFlogo -Width $FFlogoWidth -Height $FFlogoHeight > $SixLogo
 	} # convert image to sixel format
 } 
