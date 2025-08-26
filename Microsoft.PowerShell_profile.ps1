@@ -343,11 +343,11 @@ if (-not (Get-Command wt -ErrorAction SilentlyContinue)) {
 ######################################################################
 ##### Setting aliases spesific to PowerShell-Profile-Server Pimp #####
 ######################################################################
-New-Alias Notepad "$env:Programfiles\Notepad++\Notepad++.exe"
-New-Alias np "$env:Programfiles\Notepad++\Notepad++.exe"
-New-Alias vi "$env:Programfiles\Notepad++\Notepad++.exe"
+New-Alias np "$env:Programfiles\Notepad++\Notepad++.exe" -Force
+New-Alias vi np -Force
+New-Alias edit np -Force
 function hf {Get-Content (Get-PSReadlineOption).HistorySavePath}
-New-Alias Get-FullHistory hf
+New-Alias Get-FullHistory hf -Force
 function Path { $env:Path }
 function PathX { $env:Path -split ';' }
 function env {Get-ChildItem env:}
@@ -667,13 +667,13 @@ Use 'Show-Help' to display this help message.
 Write-host "                                                                "
 # Check if $FFLogo exist and convert $FFLogo to $FFLogo + ".sixel" if the sixel-version doesn's exist in same folder.
 $SixLogo = $FFlogo + ".sixel"
-if (!(Test-Path -Path $FFLogo -PathType Leaf)) {
+if ((Test-Path -Path $FFLogo -PathType Leaf)) {
 	if (!(Test-Path -Path $SixLogo -PathType Leaf)) {
 		ConvertTo-Sixel $FFlogo -Width $FFlogoWidth -Height $FFlogoHeight > $SixLogo
 	} # convert image to sixel format
 } 
 
-# Executing FastFetch (neofetch-port but faster compiled in C++ to powershell)
+# Executing FastFetch (neofetch-port but faster compiled in C++)
 fastfetch --raw $SixLogo --logo-width $FFlogoWidth --logo-height $FFlogoHeight --config $FFConfig
 # optionally --logo-width 55 --logo-height 28 --logo-padding-top 1 --logo-padding 5 (--logo-width $NUMBER_OF_COLUMNS_USED --logo-height $NUMBER_OF_ROWS_USED)
 # optionally2 for config-file usually designed --config "C:\Users\runeg\OneDrive - Dustin Group\Documents\PowerShell\Scripts\Bash\fastfetch\frames.jsonc"
