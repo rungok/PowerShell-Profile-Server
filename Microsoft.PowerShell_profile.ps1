@@ -665,11 +665,13 @@ Use 'Show-Help' to display this help message.
 
 # Write-host "$([char]0x1b)[1F" -nonewline
 Write-host "                                                                "
-# Check if $FFLogo exist and convert $FFLogo to $FFLogo + ".sixel" if it doesn't
+# Check if $FFLogo exist and convert $FFLogo to $FFLogo + ".sixel" if the sixel-version doesn's exist in same folder.
 $SixLogo = $FFlogo + ".sixel"
-if (!(Test-Path -Path $SixLogo -PathType Leaf)) {
-	ConvertTo-Sixel $FFlogo -Width $FFlogoWidth -Height $FFlogoHeight > $SixLogo
-} # convert image to sixel format
+if (!(Test-Path -Path $FFLogo -PathType Leaf)) {
+	if (!(Test-Path -Path $SixLogo -PathType Leaf)) {
+		ConvertTo-Sixel $FFlogo -Width $FFlogoWidth -Height $FFlogoHeight > $SixLogo
+	} # convert image to sixel format
+} 
 
 # Executing FastFetch (neofetch-port but faster compiled in C++ to powershell)
 fastfetch --raw $SixLogo --logo-width $FFlogoWidth --logo-height $FFlogoHeight --config $FFConfig
