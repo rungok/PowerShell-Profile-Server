@@ -264,7 +264,7 @@ function Update-Profile {
 		Write-Host ""
 		$TimeMarker = Get-Date -Format "ddMMyyyy_HHmm"
 		$Bakfile = "Microsoft.PowerShell_profile_"+$TimeMarker+".ps1"
-        Get-Item -Path $PROFILE | Move-Item -Destination $Bakfile -Force
+        Get-Item -Path $PROFILE | Move-Item -Path $PROFILE -Destination $Bakfile -Force
         Invoke-RestMethod https://github.com/$githubUser/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1 -OutFile $PROFILE
         Write-Host "The profile has been created at " -f Cyan -nonewline;Write-Host $PROFILE;Write-Host "     and old profile renamed to " -f Cyan -nonewline;Write-Host $Bakfile -f DarkGray
     }
