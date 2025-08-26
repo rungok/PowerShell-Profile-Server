@@ -668,9 +668,11 @@ Write-host "                                                                "
 # Check if $FFLogo exist and convert $FFLogo to $FFLogo + ".sixel" if the sixel-version doesn's exist in same folder.
 $SixLogo = $FFlogo + ".sixel"
 if ((Test-Path -Path $FFLogo -PathType Leaf)) {
-	if (!(Test-Path -Path $SixLogo -PathType Leaf)) {
+	if ((Test-Path -Path $SixLogo -PathType Leaf)) {
 		$SixObject = Get-Item -Path $Sixlogo
 		If ($SixObject.Length -eq 0) { Remove-Item -Path $Sixlogo -Force }
+	}
+	if (!(Test-Path -Path $SixLogo -PathType Leaf)) {
 		ConvertTo-Sixel $FFlogo -Width $FFlogoWidth -Height $FFlogoHeight > $SixLogo
 	} # convert image to sixel format
 } 
