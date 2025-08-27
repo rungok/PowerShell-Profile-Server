@@ -1,7 +1,7 @@
 #####################################################################################################
 $tit = 'PowerShell-Profile-Server Pimp v2.7 by GOKS0R DEVELOPMENT'									#
 $githubUser = 'rungok'																				#
-$PoshTheme = 'markbull'  # Write Get-PoshThemes to see all themes in action							#
+$PoshTheme = 'aliens'  # Write Get-PoshThemes to see all themes in action							#
 $FFConfig = $env:UserProfile + '\.config\fastfetch\frames.jsonc'									#
 $FFlogo = $env:UserProfile + '\.config\fastfetch\indianai_cropped2.png' # Specify logo path			#
 $FFlogoWidth = 60  # Width  in number of chars														#
@@ -215,20 +215,6 @@ if (Get-Command fastfetch -ErrorAction SilentlyContinue) {
 }
 
 
-#### Download extra fastfetch profile picture and config at ~/.config/fastfetch/
-if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
-    try {
-        # Detect Version of PowerShell & Create Profile directories if they do not exist.
-        $profilePath = ""
-	    $profilePath = $env:userprofile + "\.config\fastfetch"
-	    if (!(Test-Path -Path $profilePath)) { New-Item -Path $profilePath -ItemType "directory" }
-     	    Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/frames.jsonc -OutFile $FFConfig
-            Write-Host "FastFetch config-file @ [$FFConfig] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
-			Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/indianai_cropped2.png -OutFile $FFlogo
-            Write-Host "FastFetch profile-pic @ [$FFlogo] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
-    	}
-    catch { Write-Error "Failed to create or update the profile. Error: $_" }
-}
 
 #### Install Cascadia Mono (default Terminal Nerd Font)
 If (choco list --local-only --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version | Select-Object Name | Where-Object Name -match robotomono) {
@@ -242,36 +228,68 @@ If (choco list --local-only --limit-output | ConvertFrom-Csv -Delimiter '|' -Hea
 ####### Profile creation or update if not present #########
 ###########################################################
 
-if (!(Test-Path -Path $PROFILE -PathType Leaf)) {
-    try {
-        # Detect Version of PowerShell & Create Profile directories if they do not exist.
-        $profilePath = ""
-	    $profilePath = "$env:userprofile\Documents\WindowsPowerShell"
-	    if (!(Test-Path -Path $profilePath)) { New-Item -Path $profilePath -ItemType "directory" }
-     	    Invoke-RestMethod https://github.com/$githubUser/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1 -OutFile $PROFILE
-	    $profilePath = "$env:userprofile\Documents\Powershell"
-	    if (!(Test-Path -Path $profilePath)) { New-Item -Path $profilePath -ItemType "directory" }
-            Invoke-RestMethod https://github.com/$githubUser/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1 -OutFile $profilePath\Microsoft.PowerShell_profile.ps1
-            Write-Host "The profile @ [$PROFILE] has been created and will be executed on every Terminal/Powershell-window launch." -f Cyan
-    	}
-    catch { Write-Error "Failed to create or update the profile. Error: $_" }
-}
-
+#### Command to ad-hoc Download and write new profile for current version of Powershell + rename old to file+timemarker.ps1.
 function Update-Profile {
     try {
+		#### Test if My Documents is redirected by GPO so profiles has to be present under that folder instead
 		Write-Host "Trying to download latest profile from GitHub. You old will be renamed to <filename><timestamp>.ps1 if it exist." -f Cyan
 		Write-Host "Move any custom config at top of old file manually to the new if you had some special picture or FastFetch config." -f Cyan
 		Write-Host ""
+		
+		# Create bak-filename and rename current profile to that filename
 		$TimeMarker = Get-Date -Format "ddMMyyyy_HHmm"
 		$Bakfile = ($PROFILE.CurrentUserCurrentHost -replace ".{4}$")+"_"+$TimeMarker+".ps1"
-        Move-Item -Path $PROFILE.CurrentUserCurrentHost -Destination $Bakfile -Force
-        Invoke-RestMethod https://github.com/$githubUser/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1 -OutFile $PROFILE.CurrentUserCurrentHost
+		Move-Item -Path $PROFILE.CurrentUserCurrentHost -Destination $Bakfile -Force
+        
+		# Test if current profile still exist (bak-rename may have failed) and download new one if it doesn't
+		if (!(Test-Path -Path $PROFILE.CurrentUserCurrentHost -PathType Leaf)) {
+			Invoke-RestMethod https://github.com/$githubUser/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1 -OutFile $PROFILE.CurrentUserCurrentHost
+		}
         Write-Host "The profile has been created at " -f Cyan -nonewline;Write-Host $PROFILE;Write-Host "     and old profile renamed to " -f Cyan -nonewline;Write-Host $Bakfile -f DarkGray
     }
     catch {
         Write-Error "Failed to backup and update the profile. Error: $_"
     }
 }
+
+#### Try to Create Profiles for both versions of Powershell if they don't exist.
+$UserShellFoldersPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
+$PersonalFolderValue = (Get-ItemProperty -Path $UserShellFoldersPath -Name "Personal").Personal
+
+$profilePath = "$PersonalFolderValue\WindowsPowerShell"
+if (!(Test-Path -Path $profilePath)) { New-Item -Path $profilePath -ItemType "directory" }
+if (!(Test-Path -Path $profilePath\Microsoft.PowerShell_profile.ps1 -PathType Leaf)) {
+	try {
+		Invoke-RestMethod https://github.com/$githubUser/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1 -OutFile $profilePath\Microsoft.PowerShell_profile.ps1
+		Write-Host "The profile @ [$profilePath\Microsoft.PowerShell_profile.ps1] has been created and will be executed on every Windows default version of Powershell launch." -f Cyan
+		}
+	catch { Write-Error "Failed to create or update the profile. Error: $_" }
+}
+
+$profilePath = "$PersonalFolderValue\Powershell"
+if (!(Test-Path -Path $profilePath)) { New-Item -Path $profilePath -ItemType "directory" }
+if (!(Test-Path -Path $profilePath\Microsoft.PowerShell_profile.ps1 -PathType Leaf)) {
+    try {
+        Invoke-RestMethod https://github.com/$githubUser/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1 -OutFile $profilePath\Microsoft.PowerShell_profile.ps1
+        Write-Host "The profile @ [$profilePath\Microsoft.PowerShell_profile.ps1] has been created and will be executed on every Powershell 7.x launch." -f Cyan
+    	}
+    catch { Write-Error "Failed to create or update the profile. Error: $_" }
+}
+
+#### Download extra fastfetch profile picture and config at ~/.config/fastfetch/ if they don't exist.
+if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
+    try {
+        # Create Profile directories if they do not exist.
+	    $FFPath = $env:userprofile + "\.config\fastfetch"
+	    if (!(Test-Path -Path $FFPath)) { New-Item -Path $FFPath -ItemType "directory" }
+     	Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/frames.jsonc -OutFile $FFConfig
+        Write-Host "FastFetch config-file @ [$FFConfig] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
+		Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/indianai_cropped2.png -OutFile $FFlogo
+        Write-Host "FastFetch profile-pic @ [$FFlogo] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
+    	}
+    catch { Write-Error "Failed to create or update $FFConfig and/or $FFLogo. Error: $_" }
+}
+
 
 ##########################################
 ##### Install opensource Powershell ######
@@ -380,7 +398,7 @@ $EDITOR = if (Test-CommandExists nvim) { 'nvim' }
           elseif (Test-CommandExists notepad++) { 'notepad++' }
           elseif (Test-CommandExists sublime_text) { 'sublime_text' }
           else { 'notepad' }
-Set-Alias -Name vim -Value $EDITOR
+Set-Alias -Name vim -Value $EDITOR -Force
 
 function Edit-Profile {
     vim $PROFILE
