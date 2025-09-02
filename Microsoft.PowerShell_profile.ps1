@@ -1,9 +1,9 @@
 #####################################################################################################
-$tit = 'PowerShell-Profile-Server Pimp v2.7 by GOKS0R DEVELOPMENT'									#
+$tit = 'PowerShell-Profile-Server Pimp v2.8 by GOKS0R DEVELOPMENT'									#
 $githubUser = 'rungok'																				#
 $PoshTheme = 'aliens'  # Write Get-PoshThemes to see all themes in action							#
-$FFConfig = $env:UserProfile + '\.config\fastfetch\frames.jsonc'									#
-$FFlogo = $env:UserProfile + '\.config\fastfetch\indianai_cropped2.png' # Specify logo path			#
+$FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path		#
+$FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\indianai_cropped2.png' # logopath	#
 $FFlogoWidth = 60  # Width  in number of chars														#
 $FFlogoHeight = 43 # Height in number of chars														#
 #																									#
@@ -253,6 +253,7 @@ function Update-Profile {
 }
 
 #### Try to Create Profiles for both versions of Powershell if they don't exist.
+# Detect Documents redirection
 $UserShellFoldersPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
 $PersonalFolderValue = (Get-ItemProperty -Path $UserShellFoldersPath -Name "Personal").Personal
 
@@ -280,7 +281,7 @@ if (!(Test-Path -Path $profilePath\Microsoft.PowerShell_profile.ps1 -PathType Le
 if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
     try {
         # Create Profile directories if they do not exist.
-	    $FFPath = $env:userprofile + "\.config\fastfetch"
+	    $FFPath = Join-Path -Path $env:localappdata -ChildPath "fastfetch"
 	    if (!(Test-Path -Path $FFPath)) { New-Item -Path $FFPath -ItemType "directory" }
      	Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/frames.jsonc -OutFile $FFConfig
         Write-Host "FastFetch config-file @ [$FFConfig] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
@@ -320,28 +321,30 @@ if (-not (Get-Command wt -ErrorAction SilentlyContinue)) {
   		Write-Host "❌ Microsoft Windows Terminal not found. Attempting to install required components and Terminal from Microsoft and Github...:" -f Cyan
 		 	try {
 			    CD $Home\Downloads
+				if (!(Test-Path -Path '.\WindowsTerminalPreInstallKit')) { New-Item -Path '.\WindowsTerminalPreInstallKit' -ItemType "directory" }
+				CD .\WindowsTerminalPreinstallKit\
 			    Write-Host "Downloading VCLibs..." -nonewline -f Cyan
 		     	    if (!(Test-Path -Path .\Microsoft.VCLibs.x86.14.00.Desktop.appx)) {
-			  	Invoke-WebRequest -Uri https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx -outfile Microsoft.VCLibs.x86.14.00.Desktop.appx }
+			  	Invoke-WebRequest -Uri https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx -outfile .\Microsoft.VCLibs.x64.14.00.Desktop.appx }
 			    Write-Host "installing...: " -nonewline -f Cyan
-			    Add-AppxPackage .\Microsoft.VCLibs.x86.14.00.Desktop.appx
+			    Add-AppxPackage .\Microsoft.VCLibs.x64.14.00.Desktop.appx
 		     	    Write-host "√" -b DarkGreen -f White
 		
-		     	    Write-Host "Downloading PreinstallKit..." -nonewline -f Cyan
+		     	Write-Host "Downloading PreinstallKit..." -nonewline -f Cyan
 			    if (!(Test-Path -Path .\PreinstallKit.zip)) {
-		     		Invoke-WebRequest -Uri https://github.com/microsoft/terminal/releases/download/v1.21.2361.0/Microsoft.WindowsTerminal_1.21.2361.0_8wekyb3d8bbwe.msixbundle_Windows10_PreinstallKit.zip -outfile .\PreinstallKit.zip }
-		     	    
-			    Write-Host "installing...: " -nonewline -f Cyan
-		     	    Expand-Archive .\PreinstallKit.zip .
-			    Add-AppxPackage .\Microsoft.UI.Xaml.2.8_8.2310.30001.0_x64__8wekyb3d8bbwe.appx
-			    Add-AppxPackage .\754329278a2d4caa964755f3410dd892.msixbundle
+		     		Invoke-WebRequest -Uri https://github.com/microsoft/terminal/releases/download/v1.23.12371.0/Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle_Windows10_PreinstallKit.zip -outfile .\WindowsTerminalPreInstallKit.zip }
+			    Write-Host "Expanding WindowsTerminalPreInstallKit.zip..." -nonewline -f Cyan
+		     	Expand-Archive .\PreinstallKit.zip .
+				Write-Host "installing...: " -nonewline -f Cyan
+			    Add-AppxPackage .\Microsoft.UI.Xaml.2.8_8.2501.31001.0_x64__8wekyb3d8bbwe.appx
+			    Add-AppxPackage .\7d37c32af9f64227a7f03dfb1d1ab7b2.msixbundle
 		     	    Write-host "√" -b DarkGreen -f White
 		     
-			    Write-Host "Downloading Terminal..." -nonewline -f Cyan
-			    if (!(Test-Path -Path .\Microsoft.WindowsTerminal_1.21.2361.0_8wekyb3d8bbwe.msixbundle)) {
-		     		Invoke-WebRequest -Uri https://github.com/microsoft/terminal/releases/download/v1.21.2361.0/Microsoft.WindowsTerminal_1.21.2361.0_8wekyb3d8bbwe.msixbundle -outfile .\Microsoft.WindowsTerminal_1.21.2361.0_8wekyb3d8bbwe.msixbundle }
+			    Write-Host "Downloading Windows Terminal..." -nonewline -f Cyan
+			    if (!(Test-Path -Path .\Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle)) {
+		     		Invoke-WebRequest -Uri https://github.com/microsoft/terminal/releases/download/v1.23.12371.0/Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle -outfile .\Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle }
 			    Write-Host "installing...: " -nonewline -f Cyan
-			    Add-AppxPackage Microsoft.WindowsTerminal_1.21.2361.0_8wekyb3d8bbwe.msixbundle
+			    Add-AppxPackage .\Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle
 		     	    Write-host "√" -b DarkGreen -f White
 		     	    
 		   	    if (Get-Command wt -ErrorAction SilentlyContinue) {
@@ -706,11 +709,10 @@ Write-Host "Write 'Show-Help' to display overview of enhanced PowerShell command
 #
 #	Changes last few versions
 #
-#	Version 2.6
+#	Version 2.8
 #	- ConvertTo-Sixel module added (since Windows Terminal now has support for real inline pictures like kitty on Linux, but in sixel format)
 #	- FastFetch options modified to handle converted sixel picture via -raw option with size parameters
 #
 #	Version 2.5
 #	- Changed from using winfetch to fastfetch (much more powerful and faster and winfetch might have been abandonded since it also stopped working)
 #
-
