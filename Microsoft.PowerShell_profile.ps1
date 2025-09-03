@@ -334,7 +334,7 @@ if (-not (Get-Command wt -ErrorAction SilentlyContinue)) {
 			    if (!(Test-Path -Path .\PreinstallKit.zip)) {
 		     		Invoke-WebRequest -Uri https://github.com/microsoft/terminal/releases/download/v1.23.12371.0/Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle_Windows10_PreinstallKit.zip -outfile .\WindowsTerminalPreInstallKit.zip }
 			    Write-Host "Expanding WindowsTerminalPreInstallKit.zip..." -nonewline -f Cyan
-		     	Expand-Archive .\PreinstallKit.zip .
+		     	Expand-Archive .\WindowsTerminalPreInstallKit.zip .
 				Write-Host "installing...: " -nonewline -f Cyan
 			    Add-AppxPackage .\Microsoft.UI.Xaml.2.8_8.2501.31001.0_x64__8wekyb3d8bbwe.appx
 			    Add-AppxPackage .\7d37c32af9f64227a7f03dfb1d1ab7b2.msixbundle
