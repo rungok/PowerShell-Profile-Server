@@ -23,10 +23,10 @@
         ],
         "brightColor": true,
         "bar": {
-            "charElapsed": "■",
-            "charTotal": "-",
-            "borderLeft": "[",
-            "borderRight": "]",
+            "char.Elapsed": "■",
+            "char.Total": "-",
+            "border.Left": "[",
+            "border.Right": "]",
             "width": 11
         },
         "percent": {
