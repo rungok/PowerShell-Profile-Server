@@ -687,7 +687,7 @@ Use 'Show-Help' to display this help message.
 # Write-host "$([char]0x1b)[1F" -nonewline
 Write-host "                                                                "
 
-If (!$is2022) {
+If ($is2022) {
 	# Check if $FFLogo exist and convert $FFLogo to $FFLogo + ".sixel" if the sixel-version doesn's exist in same folder.
 	$SixLogo = $FFlogo + ".sixel"
 	if ((Test-Path -Path $FFLogo -PathType Leaf)) {
