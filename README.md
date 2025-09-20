@@ -1,4 +1,4 @@
-# :unicorn: PowerShell Profile Server Pimping
+# :unicorn: Pimped PowerShell Profile for Windows
 Have you ever tried to install the excellent Microsoft Windows Terminal on a Windows Server 2022 or 2019?
 Well, you simply don't want to go through that pain twice. This powershell startup profile script does that for you including all the prereqs required for it to work on Windows 2022.
 Furthermore, it will also install a couple of other components like Powershell v7.x, Notepad++ and terminal enhancements like Oh-My-Posh for you if they are not installed from before.
