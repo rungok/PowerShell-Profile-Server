@@ -1,23 +1,35 @@
 #####################################################################################################
-$tit = 'PowerShell-Profile-Server Pimp v2.8 by GOKS0R DEVELOPMENT'									#
+$tit = 'Pimped PowerShell-Profile for Windows v2.8 by GOKS0R'			 							#
 $githubUser = 'rungok'																				#
 $PoshTheme = 'aliens'  # Write Get-PoshThemes to see all themes in action							#
 $FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path		#
 $FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\indianai_cropped2.png' # logopath	#
 $FFlogoWidth = 60  # Width  in number of chars														#
-$FFlogoHeight = 43 # Height in number of chars														#
+$FFlogoHeight = 40 # Height in number of chars														#
 #																									#
-#  This script will try to install Microsoft Windows Terminal with required components				#
+#  This script will try to install Windows Terminal (even on Windows Server 2022)					#
 #  in additions to Oh-My-Posh and other enhancments so even some Linux-commands will work.			#
-#  Then it will insert this script where it should be placed, which is the path						#
-#  of $PROFILE. Write $PROFILE in Powershell if you wonder where it is. Usually in your				#
-#  $HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1										#
 #																									#
-#  Manual changes needed after install:																#
-#  Change your font to RobotoMono Size 10 and set font rendering to ClearType for icon rendering	#
-#  Write Fastfetch --print-logos to see all logos													#
-#  When using picture, it will be converted to raw sixel format to work in Windows Terminal,		#
-#  For some reason, it can payoff to resize picture out of aspect to 90% of its height. 			#
+#  The reason for making this script was to Rise up the CLI environment quickly when setting   		#
+#  up VM servers by installing Windows Terminal, Fastfetch, NerdFont, Notepad++, Oh-My-Posh Prompt	#
+#  and a bunch of aliases for those of us that jump between Linux and Windows on a regular basis.	#
+#  It won't meddle with other users	environment or overwrite any existing profiles if they already  #
+#  exist (existing will be renamed to <filename><timestamp>.bak).									#
+#																									#
+#  A lot of testing has been done to make sure it doesn't mess up existing setups or overwrite		#
+#  anything important in any way, so it should be safe to use on customers servers.					#													#			
+#  It's also tested on 2019 (although it will skip installing Windows Terminal) and Win11.    		#
+#																									#
+#  The script will be saved in path-string $PROFILE, which is the default placement					#
+#  Just write $PROFILE in Powershell if you wonder where it is. Usually in your						#
+#  $HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1 			for PowerShell v7.x	 		#
+#  $HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1 	for PowerShell v5.x			#
+#																									#
+#  Manual changes in Terminals needed after install:												#
+#  1. Change your font to RobotoMono Size 10														#
+#  2. Set font rendering to ClearType for icon rendering											#
+#  																									#
+#  Picture logo will be converted to raw sixel format to work in Windows Terminal v1.22+			#
 #####################################################################################################
 
 Write-Host("`n         .--------< ") -f white -nonewline
