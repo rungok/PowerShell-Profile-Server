@@ -17,7 +17,7 @@ $FFlogoHeight = 40 # Height in number of chars														#
 #  exist (existing will be renamed to <filename><timestamp>.bak).									#
 #																									#
 #  A lot of testing has been done to make sure it doesn't mess up existing setups or overwrite		#
-#  anything important in any way, so it should be safe to use on customers servers.					#													#			
+#  anything important in any way, so it should be safe to use on customers servers.					#
 #  It's also tested on 2019 (although it will skip installing Windows Terminal) and Win11.    		#
 #																									#
 #  The script will be saved in path-string $PROFILE, which is the default placement					#
@@ -381,6 +381,7 @@ New-Alias vi np -Force
 New-Alias edit np -Force
 function hf {Get-Content (Get-PSReadlineOption).HistorySavePath}
 New-Alias Get-FullHistory hf -Force
+Set-Alias history hf -Force
 function Path { $env:Path }
 function PathX { $env:Path -split ';' }
 function env {Get-ChildItem env:}
