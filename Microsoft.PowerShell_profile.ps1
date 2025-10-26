@@ -35,7 +35,7 @@ $FFlogoHeight = 40 # Height in number of chars														#
 Write-Host("`n         .--------< ") -f white -nonewline
 Write-Host($tit) -f Cyan -nonewline
 Write-Host(" >----------------.") -f white
-Write-Host("         '-------------------------------------------------------------------------------------'`n") -f white
+Write-Host("         '--------------------------------------------------------------------------------'`n") -f white
 
 $execPolicy = Get-ExecutionPolicy
 if ($execPolicy -ne "RemoteSigned") {
