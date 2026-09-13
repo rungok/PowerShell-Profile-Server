@@ -56,7 +56,7 @@ If (([Environment]::OSVersion).Version.Build -lt 18362) { [bool] $is2022 = $fals
 ### Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if build is Windows 2025 ###
 If (([Environment]::OSVersion).Version.Build -ge 22000) {
 	[bool] $is2025 = $true
-	If (-not Test-Path -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}") {
+	If (-not (Test-Path -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}")) {
 		# Set compact file explorer to ENABLED
 		Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "UseCompactMode" -Value 1
 		# Set full rightclick menu to ENABLED
