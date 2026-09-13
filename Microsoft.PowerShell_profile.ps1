@@ -1,7 +1,7 @@
 #####################################################################################################
-$tit = 'Pimped PowerShell-Profile for Windows v2.8 by GOKS0R'			 							#
+$tit = 'Pimped PowerShell-Profile for Windows v2.9 by GOKS0R'			 							#
 $githubUser = 'rungok'																				#
-$PoshTheme = 'aliens'  # Write Get-PoshThemes to see all themes in action							#
+$PoshTheme = 'dracula'  # Write Get-PoshThemes to see all themes in action							#
 $FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path		#
 $FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\indianai_cropped2.png' # logopath	#
 $FFlogoWidth = 60  # Width  in number of chars														#
@@ -17,7 +17,7 @@ $FFlogoHeight = 40 # Height in number of chars														#
 #  exist (existing will be renamed to <filename><timestamp>.bak).									#
 #																									#
 #  A lot of testing has been done to make sure it doesn't mess up existing setups or overwrite		#
-#  anything important in any way, so it should be safe to use on customers servers.					#
+#  anything important in any way, so it should be safe to use on customers servers.					#			
 #  It's also tested on 2019 (although it will skip installing Windows Terminal) and Win11.    		#
 #																									#
 #  The script will be saved in path-string $PROFILE, which is the default placement					#
@@ -304,9 +304,9 @@ if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
 }
 
 
-##########################################
-##### Install opensource Powershell ######
-##########################################
+###############################################
+##### Install opensource Powershell v7.x ######
+###############################################
 
 function Update-PowerShell {
 	if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
@@ -324,9 +324,9 @@ function Update-PowerShell {
 }
 Update-PowerShell
 
-######################################
-# Microsoft Windows Terminal Install # -> Must be installed manually to get around the Windows edition check on Windows Servers
-######################################
+#################################################################
+# Microsoft Windows Terminal Install for Windows 2022 and older #
+#################################################################
 if (-not (Get-Command wt -ErrorAction SilentlyContinue)) {
 	if ($isAdmin) {
 		if ($is2022) {
@@ -381,7 +381,6 @@ New-Alias vi np -Force
 New-Alias edit np -Force
 function hf {Get-Content (Get-PSReadlineOption).HistorySavePath}
 New-Alias Get-FullHistory hf -Force
-Set-Alias history hf -Force
 function Path { $env:Path }
 function PathX { $env:Path -split ';' }
 function env {Get-ChildItem env:}
@@ -623,21 +622,9 @@ If ($PSVersionTable.PSVersion.Major -eq 7) {
 	Register-ArgumentCompleter -Native -CommandName dotnet -ScriptBlock $scriptblock
 }
 
-# Get theme from profile.ps1 or use a default theme
-function Get-Theme {
-    if (Test-Path -Path $PROFILE.CurrentUserAllHosts -PathType leaf) {
-        $existingTheme = Select-String -Raw -Path $PROFILE.CurrentUserAllHosts -Pattern "oh-my-posh init pwsh --config"
-        if ($null -ne $existingTheme) {
-            Invoke-Expression $existingTheme
-            return
-        }
-    } else {
-        oh-my-posh init pwsh --config https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/$PoshTheme.omp.json | Invoke-Expression
-    }
-}
-## Final Line to set prompt
-Get-Theme
-
+# Set Oh-My-Posh theme (apply default theme dracula if not set)
+if ($PoshTheme -ne $null) { $PostTheme = "dracula" }
+oh-my-posh init pwsh --config https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/$PoshTheme.omp.json | Invoke-Expression
 
 # Help Function
 function Show-Help {
@@ -696,34 +683,62 @@ Use 'Show-Help' to display this help message.
 "@
 }
 
-
 # Write-host "$([char]0x1b)[1F" -nonewline
 Write-host "                                                                "
 
-If ($is2022) {
+#### Function to check if Terminal version is above 1.22 which is the first version to support inline graphics
+function Get-WindowsTerminalVersion {
+    $currentPid = $PID
+    while ($currentPid) {
+        $proc = Get-Process -Id $currentPid -ErrorAction SilentlyContinue
+        if ($proc -and $proc.ProcessName -eq 'WindowsTerminal') {
+            $path = $proc.Path
+            if ($path) {
+                $verInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($path)
+                return [version]$verInfo.FileVersion
+            }
+        }
+        $currentPid = $proc.Parent.Id
+    }
+    return $null
+}
+
+# Check version
+$wtVersion = Get-WindowsTerminalVersion
+$minVersion = [version]'1.22.0.0'
+
+#### Execute sixel image conversion if the Terminal is v1.22 or higher
+if ($wtVersion -and $wtVersion -ge $minVersion) {
 	# Check if $FFLogo exist and convert $FFLogo to $FFLogo + ".sixel" if the sixel-version doesn's exist in same folder.
 	$SixLogo = $FFlogo + ".sixel"
 	if ((Test-Path -Path $FFLogo -PathType Leaf)) {
+		# Remove old fubar file.sixel if it exist
 		if ((Test-Path -Path $SixLogo -PathType Leaf)) {
 			$SixObject = Get-Item -Path $Sixlogo
 			If ($SixObject.Length -eq 0) { Remove-Item -Path $Sixlogo -Force }
 		}
+		# convert image to sixel format
 		if (!(Test-Path -Path $SixLogo -PathType Leaf)) {
 			ConvertTo-Sixel $FFlogo -Width $FFlogoWidth -Height $FFlogoHeight > $SixLogo
-		} # convert image to sixel format
+		}
 	} 
 
 	# Executing FastFetch (neofetch-port but faster compiled in C++)
 	fastfetch --raw $SixLogo --logo-width $FFlogoWidth --logo-height $FFlogoHeight --config $FFConfig
 	# optionally --logo-width 55 --logo-height 28 --logo-padding-top 1 --logo-padding 5 (--logo-width $NUMBER_OF_COLUMNS_USED --logo-height $NUMBER_OF_ROWS_USED)
 } else { 
-	If ($PSVersionTable.PSVersion.Major -lt 7) { fastfetch --logo "Chrom" --config all --percent-type 11 --bar-char-total "-" --bar-char-elapsed "o" } else { fastfetch }
+	If ($wtVersion) { fastfetch --logo "BlackPanther" --config archey --percent-type 11 --bar-char-total "-" --bar-char-elapsed "o" } else { fastfetch }
 }
 Write-host "                                                                "
 Write-Host "Write 'Show-Help' to display overview of enhanced PowerShell commands in this setup" -f DarkGreen
 #############################################################################################################################################################
 #
 #	Changes last few versions
+#
+#	Version 2.9
+#	- Removed bug trying to overwrite the default history alias, which Powershell doesn't accept.
+#	- Simplified execution of oh-my-posh theme setting.
+#	- Fixed bug where ConvertTo-Sixel didn't convert logo to appropriate format because of old terminal version.
 #
 #	Version 2.8
 #	- ConvertTo-Sixel module added (since Windows Terminal now has support for real inline pictures like kitty on Linux, but in sixel format)

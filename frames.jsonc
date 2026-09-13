@@ -96,7 +96,7 @@
         },
         {
             "type": "disk",
-            "key": "│{#cyan}│ {icon}  Disk      │{$4}│{#keys}│{$2}"
+            "key": "│{#cyan}│ {icon}  Disk {1}  │{$4}│{#keys}│{$2}",
         },
         {
             "type": "battery",
