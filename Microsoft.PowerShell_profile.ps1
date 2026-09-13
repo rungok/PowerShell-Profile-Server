@@ -53,6 +53,17 @@ if ($isAdmin) {
 #### Check Windows version is 2022 or lower ###
 If (([Environment]::OSVersion).Version.Build -lt 18362) { [bool] $is2022 = $false } else { [bool] $is2022 = $true }
 
+### Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if build is Windows 2025 ###
+If (([Environment]::OSVersion).Version.Build -ge 22000) {
+	[bool] $is2025 = $true
+	If (-not Test-Path -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}") {
+		# Set compact file explorer to ENABLED
+		Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "UseCompactMode" -Value 1
+		# Set full rightclick menu to ENABLED
+		New-Item -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" -Force
+	}	
+}
+
 # Initial GitHub.com connectivity check with 1 second timeout
 $canConnectToGitHub = Test-Connection github.com -Count 1 -Quiet
 
@@ -739,6 +750,7 @@ Write-Host "Write 'Show-Help' to display overview of enhanced PowerShell command
 #	- Removed bug trying to overwrite the default history alias, which Powershell doesn't accept.
 #	- Simplified execution of oh-my-posh theme setting.
 #	- Fixed bug where ConvertTo-Sixel didn't convert logo to appropriate format because of old terminal version.
+#   - Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if build is Windows 2025 / 11 shell
 #
 #	Version 2.8
 #	- ConvertTo-Sixel module added (since Windows Terminal now has support for real inline pictures like kitty on Linux, but in sixel format)
