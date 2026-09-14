@@ -738,7 +738,7 @@ if ($wtVersion -and $wtVersion -ge $minVersion) {
 	fastfetch --raw $SixLogo --logo-width $FFlogoWidth --logo-height $FFlogoHeight --config $FFConfig
 	# optionally --logo-width 55 --logo-height 28 --logo-padding-top 1 --logo-padding 5 (--logo-width $NUMBER_OF_COLUMNS_USED --logo-height $NUMBER_OF_ROWS_USED)
 } else { 
-	If ($wtVersion) { fastfetch --logo "BlackPanther" --config archey --percent-type 11 --bar-char-total "-" --bar-char-elapsed "o" } else { fastfetch }
+	If ($is2022) { fastfetch --logo "BlackPanther" --config archey --percent-type 11 --bar-char-total "-" --bar-char-elapsed "o" } else { fastfetch }
 }
 Write-host "                                                                "
 Write-Host "Write 'Show-Help' to display overview of enhanced PowerShell commands in this setup" -f DarkGreen
