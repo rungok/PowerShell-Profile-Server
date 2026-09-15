@@ -1,17 +1,16 @@
 #####################################################################################################
-$tit = 'Pimped PowerShell-Profile for Windows v2.9 by GOKS0R'			 							#
+$tit = 'Pimped PowerShell-Profile for Windows v3.0 by GOKS0R'			 							#
 $githubUser = 'rungok'																				#
-$PoshTheme = 'dracula'  # Write Get-PoshThemes to see all themes in action							#
 $FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path		#
 $FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\indianai_cropped2.png' # logopath	#
 $FFlogoWidth = 60  # Width  in number of chars														#
-$FFlogoHeight = 40 # Height in number of chars														#
+$FFlogoHeight = 42 # Height in number of chars														#
 #																									#
-#  This script will try to install Windows Terminal (even on Windows Server 2022)					#
-#  in additions to Oh-My-Posh and other enhancments so even some Linux-commands will work.			#
+#  This script will try to install Windows Terminal (even on Windows Server 2022),					#
+#  nice ANSI-prompt and other enhancments/alias so even some Linux-commands will work.				#
 #																									#
 #  The reason for making this script was to Rise up the CLI environment quickly when setting   		#
-#  up VM servers by installing Windows Terminal, Fastfetch, NerdFont, Notepad++, Oh-My-Posh Prompt	#
+#  up VM servers by installing Windows Terminal, Fastfetch, NerdFont, Notepad++, Prompt				#
 #  and a bunch of aliases for those of us that jump between Linux and Windows on a regular basis.	#
 #  It won't meddle with other users	environment or overwrite any existing profiles if they already  #
 #  exist (existing will be renamed to <filename><timestamp>.bak).									#
@@ -169,24 +168,6 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
 	} else { Write-Host ("❌ Terminal must be started in elevated mode to install Zoxide. Fuzzy shell will not be activated until this is done.") -f Cyan }
 }
 
-
-####### Install Oh-My-Posh if not installed and shell is started in administrative mode ########
-if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
-	Write-Detect "Oh-My-Posh"
-	# Invoke-Expression (& { (Oh-My-Posh init --cmd cd powershell | Out-String) })
-} else {
-	if ($isAdmin) {
-		Write-Host "❌ Oh-My-Posh not installed. Attempting to install via " -nonewline -f Cyan
-		try {
-			choco install Oh-My-Posh -y
-			Write-Host "Oh-My-Posh installed successfully. Initializing..." -ForegroundColor DarkGreen
-   			refreshenv
-		} catch {
-			Write-Error "❌ Failed to install Oh-My-Posh. Error: $_"
-		}
-	} else { Write-Host ("❌ Powershell must be started in elevated mode to install Oh-My-Posh. Oh-My-Posh will not be activated until this is done.") -f Cyan }
-}
-
 ####### Install Notepad++ if not installed and shell is started in administrative mode ########
 if (Get-Command Notepad++ -ErrorAction SilentlyContinue) {
 	Write-Detect "Notepad++"
@@ -246,6 +227,7 @@ If (choco list --local-only --limit-output | ConvertFrom-Csv -Delimiter '|' -Hea
  	Write-Host "❌ RobotoMono nerd font not installed. Attempting to install via " -nonewline -f Cyan
  	choco install nerd-fonts-robotomono -y
 }
+
 
 ###########################################################
 ####### Profile creation or update if not present #########
@@ -633,9 +615,55 @@ If ($PSVersionTable.PSVersion.Major -eq 7) {
 	Register-ArgumentCompleter -Native -CommandName dotnet -ScriptBlock $scriptblock
 }
 
-# Set Oh-My-Posh theme (apply default theme dracula if not set)
-if ($PoshTheme -ne $null) { $PostTheme = "dracula" }
-oh-my-posh init pwsh --config https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/$PoshTheme.omp.json | Invoke-Expression
+########################################################################
+##### Special Pink Prompt to replace the old Oh-My-Posh bloatware ##### 
+########################################################################
+
+# --- Colors (tweak these RGB triples to taste) ---
+$Esc = [char]27
+
+# Segment background colors
+$BlueBG   = "48;2;76;94;172"    # "Rune" segment
+$PinkBG   = "48;2;196;60;140"   # "~\OneDrive" segment
+$LPinkBG  = "48;2;230;90;150"   # time segment
+
+# Segment foreground colors (for arrow transitions, matches previous bg)
+$BlueFG   = "38;2;76;94;172"
+$PinkFG   = "38;2;196;60;140"
+$LPinkFG  = "38;2;230;90;150"
+
+$White    = "38;2;255;255;255"
+$Green    = "38;2;0;220;120"
+
+# Powerline separator glyphs (require Nerd Font)
+$Sep      = [char]0xE0B0   # ""  sharp separator between segments
+$RoundCap = [char]0xE0B6   # ""  rounded starting cap
+
+function prompt {
+    $path = (Get-Location).Path.Replace($HOME, "~")
+
+    # Rounded cap: colored like segment 1, no background (blends into terminal bg)
+    $cap = "$Esc[${BlueFG}m$RoundCap$Esc[0m"
+
+    # Segment 1: user/machine label
+    $seg1 = "$Esc[$BlueBG;${White}m $env:USERNAME $Esc[0m"
+    $arrow1 = "$Esc[$BlueFG;48;2;196;60;140m$Sep$Esc[0m"
+
+    # Segment 2: path with heart icon
+    $seg2 = "$Esc[$PinkBG;${White}m $path $Esc[0m"
+    $arrow2 = "$Esc[$PinkFG;48;2;230;90;150m$Sep$Esc[0m"
+
+    # Segment 3: time
+    $time = Get-Date -Format "HH:mm:ss"
+    $seg3 = "$Esc[$LPinkBG;${White}m $time $Esc[0m"
+    $arrow3 = "$Esc[${LPinkFG}m$Sep$Esc[0m"
+
+    # Cursor: green block, same line, no line break
+    $cursor = "$Esc[${Green}m$Esc[0m "
+
+    "$cap$seg1$arrow1$seg2$arrow2$seg3$arrow3$cursor"
+}
+
 
 # Help Function
 function Show-Help {
@@ -688,7 +716,6 @@ Help for $tit
 `e[33m|`e[37m cpy <text> - Copies the specified text to the clipboard.																`e[121G`e[33m|
 `e[33m|`e[37m pst - Retrieves text from the clipboard.																				`e[121G`e[33m|
 `e[33m|`e[37m z - ehanced zoxide CD (change directory) that guess which directory you want to change to based on history.			`e[121G`e[33m|
-`e[33m|`e[37m Get-PoshThemes - See overview of all Oh-My-Posh themes in action based on your current folder							`e[121G`e[33m|
 '-----------------------------------------------------------------------------------------------------------------------'
 Use 'Show-Help' to display this help message.
 "@
@@ -746,11 +773,11 @@ Write-Host "Write 'Show-Help' to display overview of enhanced PowerShell command
 #
 #	Changes last few versions
 #
-#	Version 2.9
+#	Version 3.0
 #	- Removed bug trying to overwrite the default history alias, which Powershell doesn't accept.
-#	- Simplified execution of oh-my-posh theme setting.
+#	- Replaced oh-my-posh with some simpler code that just sets a prompt and leave it at that.
 #	- Fixed bug where ConvertTo-Sixel didn't convert logo to appropriate format because of old terminal version.
-#   - Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if build is Windows 2025 / 11 shell
+#   - Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if build is Windows 2025 / 11 shell.
 #
 #	Version 2.8
 #	- ConvertTo-Sixel module added (since Windows Terminal now has support for real inline pictures like kitty on Linux, but in sixel format)
