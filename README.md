@@ -25,7 +25,8 @@ Execute the following command in an elevated PowerShell window to install the Po
 -----------------------------------------------------------------------------------------------------------------------------
 
 ## 🎨 PreView
-![image](https://github.com/user-attachments/assets/d45ff30c-43d8-485a-a826-c637f8ea0e38)
+<img width="1231" height="1081" alt="PimpedProfile1" src="https://github.com/user-attachments/assets/ac80cbb5-69bc-47c2-9033-32ed1a1610bf" />
+
 
 When it has installed all its components, your Powershell Terminal will look and feel almost as good as a Linux terminal.
 This version (compared to Titus's version) is tailored to work better for Windows Server and simplified to be only 1 significant powershell-script you can paste in
