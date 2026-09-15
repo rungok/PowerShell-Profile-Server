@@ -1,7 +1,7 @@
 # :unicorn: Pimped PowerShell_Profile (optimized for Servers)
 Have you ever tried to install the excellent Microsoft Windows Terminal on a Windows Server 2022 or 2019?
 Well, you simply don't want to go through that pain twice. This powershell startup profile script does that for you including all the prereqs required for it to work on Windows 2022.
-Furthermore, it will also install a couple of other components like Powershell v7.x, Notepad++ and terminal enhancements like Oh-My-Posh for you if they are not installed from before.
+Furthermore, it will also install a couple of other components like Powershell v7.x, Notepad++ and terminal enhancements if they are not installed from before.
 Script works just aswell on most client Windows versions.
 
 ## ⚡ One Line Install (Elevated PowerShell Recommended)
@@ -17,15 +17,16 @@ Execute the following command in an elevated PowerShell window to install the Po
 - Powershell v7.x
 - Chocolatey Packet Manager (winget replacement that works on server OS) with following packages
      - zoxide fuzzy shell (PowerShell enhancement with predictive writing and easier folder changes)
-     - Oh-My-Posh beautiful prompt with colors (and ribbons if you want)
      - Notepad++ (Extended Notepad app with colorizing of text-types and a lot of functions)
      - nerd-fonts-robotomono (good font with extended set of terminal icons)
 - VCLibs and .NET v4.8 (runtime libraries for C and .NET code needed for Windows Terminal to work)
 - Aliases to ease the everyday life of ppl switching often between Linux and Windows (grep and tail works just as in Linux)
+- Sets a beautiful pink ANSI-prompt with User, Path and Time.
 -----------------------------------------------------------------------------------------------------------------------------
 
 ## 🎨 PreView
-![image](https://github.com/user-attachments/assets/d45ff30c-43d8-485a-a826-c637f8ea0e38)
+<img width="1231" height="1081" alt="PimpedProfile1" src="https://github.com/user-attachments/assets/ac80cbb5-69bc-47c2-9033-32ed1a1610bf" />
+
 
 When it has installed all its components, your Powershell Terminal will look and feel almost as good as a Linux terminal.
 This version (compared to Titus's version) is tailored to work better for Windows Server and simplified to be only 1 significant powershell-script you can paste in
