@@ -41,18 +41,18 @@ if ($execPolicy -ne "RemoteSigned") {
         Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force
 }
 
-#### Test if Powershell is started in elevated mode for system installs that need it ####
+#### DETECTION: Elevation - Test if Powershell is started in elevated mode for system installs that need it ####
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
-#### opt-out of telemetry before doing anything, only if PowerShell is run as admin ####
+#### CONFIG Admin: Opt-out of telemetry before doing anything if PowerShell is run as admin ####
 if ($isAdmin) {
     [System.Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', 'true', [System.EnvironmentVariableTarget]::Machine)
 }
 
-#### Check Windows version is 2022 or lower ###
+#### DETECTION: Check Windows version is Windows 10 or 2022 kernel (min build 18362) ####
 If (([Environment]::OSVersion).Version.Build -lt 18362) { [bool] $is2022 = $false } else { [bool] $is2022 = $true }
 
-### Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if build is Windows 2025 ###
+#### CONFIG User: Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if Windows 11/2025 ####
 If (([Environment]::OSVersion).Version.Build -ge 22000) {
 	[bool] $is2025 = $true
 	If (-not (Test-Path -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}")) {
@@ -63,26 +63,36 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 	}	
 }
 
-# Initial GitHub.com connectivity check with 1 second timeout
+#### DETECTION Online: Initial GitHub.com connectivity check with 1 second timeout ####
 $canConnectToGitHub = Test-Connection github.com -Count 1 -Quiet
 
-# Write out a detection sentence with √ in front of it
+#### FUNCTION: Write out a detection sentence with √ in front of it
 function Write-Detect {
     param ([string]$Software = "Program")
     Write-host " " -nonewline
     If (($PSVersionTable.PSVersion.Major -gt 6) -and ($is2022)) { 
-	Write-host ("✅") -nonewline -f DarkGreen
-	} else { Write-host "v" -nonewline -b DarkGreen -f White } 
+		Write-host ("✅") -nonewline -f DarkGreen
+		} else {
+		Write-host "v" -nonewline -b DarkGreen -f White
+	} 
     Write-host " $Software detected.                     "  -f Green
-	Write-host "$([char]0x1b)[1F" -nonewline
+	# Write-host "$([char]0x1b)[1F" # -nonewline
 }
 
-################################################################################
-####### Test all components status and install if they are not present #########
-################################################################################
+#### DETECTION function - Usage: if (Test-CommandExists nvim) { Write-Host 'nvim detected' }
+function Test-CommandExists {
+    param($command)
+    $exists = $null -ne (Get-Command $command -ErrorAction SilentlyContinue)
+    return $exists
+}
 
 
-# Install NuGet to ensure the other packages can be installed.
+############################################################################
+####### Test components status and install if they are not present #########
+############################################################################
+
+
+# DETECTION + User install: NuGet provider to ensure the other packages can be installed.
 $nugetProvider = Get-PackageProvider | Select-Object Name | Where-Object Name -match NuGet
 if (-not $nugetProvider) {
     Write-Host "NuGet provider not found. Installing..." -f Cyan
@@ -92,22 +102,20 @@ if (-not $nugetProvider) {
 } else {
     Write-Detect "NuGet provider"
 }
-# Trust the PSGallery repository.
-Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
 
-### Detect and Install Terminal-Icons module
-if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
-    Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
-}
+# DETECTION + User config: Trust the PSGallery repository if it's not trusted
+If ((Get-PSRepository  | Select-Object Name,InstallationPolicy | Where-Object Name -match PSGallery | Select-Object -Expandproperty InstallationPolicy) -ne "Trusted") {
+	Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted }
+
+# DETECTION + User install: Terminal-Icons module
+if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) { Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck }
 Import-Module -Name Terminal-Icons
 
-### Detect and Install ConvertTo-Sixel module
-if (-not (Get-Module -ListAvailable -Name Sixel)) {
-    Install-Module -Name Sixel -Scope CurrentUser -Force -SkipPublisherCheck
-}
+# DETECTION + User install: ConvertTo-Sixel module
+if (-not (Get-Module -ListAvailable -Name Sixel)) { Install-Module -Name Sixel -Scope CurrentUser -Force -SkipPublisherCheck }
 Import-Module -Name Sixel
 
-##### Check if .net v4.8 is installed #### 
+# DETECTION: .net v4.8 Framework
 $dotnet = (Get-ItemPropertyValue -LiteralPath 'HKLM:SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -Name Release) -ge 528040
 if ($dotnet) {
     Write-Detect ".NET Framework v4.8 or higher"
@@ -118,8 +126,8 @@ if ($dotnet) {
     }
 }
 
-### Install Chocolatey if not installed and shell is started in administrative mode ####
-if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+# DETECTION + Admin install: Chocolatey (if not installed and shell is started in administrative mode)
+if (-not (Test-CommandExists choco)) {
 	Write-Host ("❌ Chocolatey packet manager not installed...") -nonewline -f Cyan
 	if ($isAdmin) {
 		Write-Host ("Trying to install...") -nonewline -f Cyan
@@ -134,25 +142,10 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
 		$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1";if (Test-Path($ChocolateyProfile)) { Import-Module "$ChocolateyProfile" }
 }
 
-### Talk about .net v4.8 restart ###
-If ((!$is2022) -and ($isAdmin) -and (!$dotnet)) {
-  	Write-Host "❌ You can close Powershell window or press CTRL+C and do a FULL SERVER RESTART from this point if you like." -f Magenta
-	Write-Host "As this script is server oriented, it will never force a Windows restart." -f Magenta
-    	Write-Host "However, rest of the script will keep whining about missing v4.8 if you don't" -f Magenta
-        Write-Host "(But you can of course schedule that restart for later if need be. F.ex. write" -f Magenta
-	Write-Host "'shutdown.exe -r -f -t 21600' in CLI where -(r)estart, -(f)orce, -(t)ime 21600 seconds is 6 hours )" -f Magenta
-	######### Message-box ##########
-        $delay = 10
-        $wshell = New-Object -ComObject Wscript.Shell
-        $wshell.Popup("Recommend a restart now to activate .NET v4.8",$delay,"Old Windows needs a reboot",0x0)
-        start-sleep 1
-        $delay -= 1
-}
-
-### Install zoxide fuzzy shell if not installed and shell is started in administrative mode ####
-if (Get-Command zoxide -ErrorAction SilentlyContinue) {
+# DETECTION + Admin install: zoxide fuzzy shell (if not installed and shell is started in administrative mode)
+if (Test-CommandExists zoxide) {
 	Write-Detect "Zoxide"
-	Invoke-Expression (& { (zoxide init --cmd cd powershell | Out-String) })
+	Invoke-Expression (& zoxide init --cmd cd powershell | Out-String)
 	Set-Alias -Name z -Value __zoxide_z -Option AllScope -Scope Global -Force
 	Set-Alias -Name zi -Value __zoxide_zi -Option AllScope -Scope Global -Force
 } else {
@@ -168,8 +161,8 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
 	} else { Write-Host ("❌ Terminal must be started in elevated mode to install Zoxide. Fuzzy shell will not be activated until this is done.") -f Cyan }
 }
 
-####### Install Notepad++ if not installed and shell is started in administrative mode ########
-if (Get-Command Notepad++ -ErrorAction SilentlyContinue) {
+# DETECTION + Admin install: Notepad++ (if not installed and shell is started in administrative mode)
+if (Test-CommandExists Notepad++) {
 	Write-Detect "Notepad++"
 } else {
 	if ($isAdmin) {
@@ -184,9 +177,8 @@ if (Get-Command Notepad++ -ErrorAction SilentlyContinue) {
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install Notepad++.") -f Cyan }
 }
 
-
-####### Install ImageMagick if not installed and shell is started in administrative mode ########
-if (Get-Command Magick -ErrorAction SilentlyContinue) {
+# DETECTION + Admin install: ImageMagick (if not installed and shell is started in administrative mode)
+if (Test-CommandExists Magick) {
 	Write-Detect "ImageMagick"
 } else {
 	if ($isAdmin) {
@@ -201,9 +193,8 @@ if (Get-Command Magick -ErrorAction SilentlyContinue) {
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install ImageMagick.") -f Cyan }
 }
 
-
-####### Install FastFetch if not installed and shell is started in administrative mode ########
-if (Get-Command fastfetch -ErrorAction SilentlyContinue) {
+# DETECTION + Admin install: FastFetch (if not installed and shell is started in administrative mode)
+if (Test-CommandExists fastfetch) {
 	Write-Detect "FastFetch"
 } else {
 	if ($isAdmin) {
@@ -218,9 +209,7 @@ if (Get-Command fastfetch -ErrorAction SilentlyContinue) {
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install FastFetch.") -f Cyan }
 }
 
-
-
-#### Install Cascadia Mono (default Terminal Nerd Font)
+# DETECTION + User install: RobotoMono Nerd Font (if not installed)
 If (choco list --local-only --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version | Select-Object Name | Where-Object Name -match robotomono) {
 	Write-Detect "RobotoMono Nerd Font"
 } else {
@@ -229,9 +218,9 @@ If (choco list --local-only --limit-output | ConvertFrom-Csv -Delimiter '|' -Hea
 }
 
 
-###########################################################
-####### Profile creation or update if not present #########
-###########################################################
+################################################################################################################
+####### Profile creation or update if not present + download example picture and FastFetch config-file #########
+################################################################################################################
 
 #### Command to ad-hoc Download and write new profile for current version of Powershell + rename old to file+timemarker.ps1.
 function Update-Profile {
@@ -282,7 +271,7 @@ if (!(Test-Path -Path $profilePath\Microsoft.PowerShell_profile.ps1 -PathType Le
     catch { Write-Error "Failed to create or update the profile. Error: $_" }
 }
 
-#### Download extra fastfetch profile picture and config at ~/.config/fastfetch/ if they don't exist.
+#### DETECTION + User download: fastfetch example profile picture and config at ~/.config/fastfetch/ if they don't exist.
 if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
     try {
         # Create Profile directories if they do not exist.
@@ -296,75 +285,69 @@ if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
     catch { Write-Error "Failed to create or update $FFConfig and/or $FFLogo. Error: $_" }
 }
 
-
-###############################################
-##### Install opensource Powershell v7.x ######
-###############################################
-
-function Update-PowerShell {
-	if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
- 		if ($isAdmin) {
-			Write-Host "PowerShell Core (pwsh v7.x) is not installed. Starting the install..." -f Cyan
-			[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"
-			# Start-Sleep -Seconds 8 # Wait for the update to finish
-			# Write-Host "Restarting the installation script with Powershell Core" -ForegroundColor DarkGreen
-			# Start-Process pwsh -ArgumentList "-NoExit", "-Command Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/$githubUser/powershell-profile-server/main/Microsoft.PowerShell_profile.ps1'-UseBasicParsing).Content"
-			# exit
-	  		}
-		} else { 
-  		Write-Detect "PowerShell Core (pwsh)"
-    		}
+#### DETECTION + Admin install: Powershell 7.x
+function Install-PowerShell {
+	if ($isAdmin) {
+		Write-Host "PowerShell v7.x is not installed. Starting the install..." -f Cyan
+		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"
+		# Start-Sleep -Seconds 8 # Wait for the update to finish
+		# Write-Host "Restarting the installation script with Powershell Core" -ForegroundColor DarkGreen
+		# Start-Process pwsh -ArgumentList "-NoExit", "-Command Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/$githubUser/powershell-profile-server/main/Microsoft.PowerShell_profile.ps1'-UseBasicParsing).Content"
+		# exit
+		} else { Write-Host ("❌ Shell must be started in elevated mode to update or install Powershell v7.x") -f Cyan }
 }
-Update-PowerShell
 
-#################################################################
-# Microsoft Windows Terminal Install for Windows 2022 and older #
-#################################################################
-if (-not (Get-Command wt -ErrorAction SilentlyContinue)) {
+if (-not (Test-CommandExists pwsh)) {
+	Install-PowerShell
+	} else { 
+  	Write-Detect "PowerShell Core (pwsh)"
+}
+
+#### DETECTION + Admin install: Microsoft Windows Terminal for Windows 2022/10 kernel
+if (-not (Test-CommandExists wt)) {
 	if ($isAdmin) {
 		if ($is2022) {
   		Write-Host "❌ Microsoft Windows Terminal not found. Attempting to install required components and Terminal from Microsoft and Github...:" -f Cyan
 		 	try {
-			    CD $Home\Downloads
-				if (!(Test-Path -Path '.\WindowsTerminalPreInstallKit')) { New-Item -Path '.\WindowsTerminalPreInstallKit' -ItemType "directory" }
-				CD .\WindowsTerminalPreinstallKit\
-			    Write-Host "Downloading VCLibs..." -nonewline -f Cyan
-		     	    if (!(Test-Path -Path .\Microsoft.VCLibs.x86.14.00.Desktop.appx)) {
-			  	Invoke-WebRequest -Uri https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx -outfile .\Microsoft.VCLibs.x64.14.00.Desktop.appx }
-			    Write-Host "installing...: " -nonewline -f Cyan
-			    Add-AppxPackage .\Microsoft.VCLibs.x64.14.00.Desktop.appx
-		     	    Write-host "√" -b DarkGreen -f White
-		
-		     	Write-Host "Downloading WindowsTerminalPreinstallKit.zip..." -nonewline -f Cyan
-			    if (!(Test-Path -Path .\WindowsTerminalPreinstallKit.zip)) {
-		     		Invoke-WebRequest -Uri https://github.com/microsoft/terminal/releases/download/v1.23.12371.0/Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle_Windows10_PreinstallKit.zip -outfile .\WindowsTerminalPreInstallKit.zip }
-			    Write-Host "Expanding..." -nonewline -f Cyan
-		     	Expand-Archive .\WindowsTerminalPreInstallKit.zip .
-				Write-Host "installing...: " -nonewline -f Cyan
-			    Add-AppxPackage .\Microsoft.UI.Xaml.2.8_8.2501.31001.0_x64__8wekyb3d8bbwe.appx
-			    Add-AppxPackage .\7d37c32af9f64227a7f03dfb1d1ab7b2.msixbundle
-		     	    Write-host "√" -b DarkGreen -f White
-		     
-			    Write-Host "Downloading Windows Terminal..." -nonewline -f Cyan
-			    if (!(Test-Path -Path .\Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle)) {
-		     		Invoke-WebRequest -Uri https://github.com/microsoft/terminal/releases/download/v1.23.12371.0/Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle -outfile .\Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle }
-			    Write-Host "installing...: " -nonewline -f Cyan
-			    Add-AppxPackage .\Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle
-		     	    Write-host "√" -b DarkGreen -f White
-		     	    
-		   	    if (Get-Command wt -ErrorAction SilentlyContinue) {
-				Write-Host "Terminal installed successfully. Initializing...:" -ForegroundColor DarkGreen
-				wt
-		  		exit
+					CD $Home\Downloads
+					if (!(Test-Path -Path '.\WindowsTerminalPreInstallKit')) { New-Item -Path '.\WindowsTerminalPreInstallKit' -ItemType "directory" }
+					CD .\WindowsTerminalPreinstallKit\
+					Write-Host "Downloading VCLibs..." -nonewline -f Cyan
+						if (!(Test-Path -Path .\Microsoft.VCLibs.x86.14.00.Desktop.appx)) {
+					Invoke-WebRequest -Uri https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx -outfile .\Microsoft.VCLibs.x64.14.00.Desktop.appx }
+					Write-Host "installing...: " -nonewline -f Cyan
+					Add-AppxPackage .\Microsoft.VCLibs.x64.14.00.Desktop.appx
+						Write-host "√" -b DarkGreen -f White
+			
+					Write-Host "Downloading WindowsTerminalPreinstallKit.zip..." -nonewline -f Cyan
+					if (!(Test-Path -Path .\WindowsTerminalPreinstallKit.zip)) {
+						Invoke-WebRequest -Uri https://github.com/microsoft/terminal/releases/download/v1.23.12371.0/Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle_Windows10_PreinstallKit.zip -outfile .\WindowsTerminalPreInstallKit.zip }
+					Write-Host "Expanding..." -nonewline -f Cyan
+					Expand-Archive .\WindowsTerminalPreInstallKit.zip .
+					Write-Host "installing...: " -nonewline -f Cyan
+					Add-AppxPackage .\Microsoft.UI.Xaml.2.8_8.2501.31001.0_x64__8wekyb3d8bbwe.appx
+					Add-AppxPackage .\7d37c32af9f64227a7f03dfb1d1ab7b2.msixbundle
+						Write-host "√" -b DarkGreen -f White
+				 
+					Write-Host "Downloading Windows Terminal..." -nonewline -f Cyan
+					if (!(Test-Path -Path .\Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle)) {
+						Invoke-WebRequest -Uri https://github.com/microsoft/terminal/releases/download/v1.23.12371.0/Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle -outfile .\Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle }
+					Write-Host "installing...: " -nonewline -f Cyan
+					Add-AppxPackage .\Microsoft.WindowsTerminal_1.23.12371.0_8wekyb3d8bbwe.msixbundle
+						Write-host "√" -b DarkGreen -f White
+						
+					if (Test-CommandExists wt) {
+					Write-Host "Terminal installed successfully. Initializing...:" -ForegroundColor DarkGreen
+					wt
+					exit
 		  	    	}
 			    }
 			    catch { Write-Error "Failed to install Microsoft Windows Terminal. Error: $_" }
 	        } else {
 	      	  If ($PSVersionTable.PSVersion.Major -eq 5) { Write-Host "❌ Microsoft Windows Terminal cannot be installed on Windows 2019, so start Powershell v7.0 instead to install rest of components:" -f Cyan }
-	        }
-     	}
+        }
+   	}
 } 
-
 
 ######################################################################
 ##### Setting aliases spesific to PowerShell-Profile-Server Pimp #####
@@ -383,19 +366,9 @@ function env {Get-ChildItem env:}
 ##### Aliases and functions spesific from forked powershell-profile ##### 
 #########################################################################
 
-# Prompt Customization if started in elevated mode
-function prompt {
-    if ($isAdmin) { "[" + (Get-Location) + "] # " } else { "[" + (Get-Location) + "] $ " }
-}
+# Terminal Window Title Customization if started in elevated mode
 $adminSuffix = if ($isAdmin) { " [ADMIN]" } else { "" }
 $Host.UI.RawUI.WindowTitle = "PowerShell {0}$adminSuffix" -f $PSVersionTable.PSVersion.ToString()
-
-# Utility Functions
-function Test-CommandExists {
-    param($command)
-    $exists = $null -ne (Get-Command $command -ErrorAction SilentlyContinue)
-    return $exists
-}
 
 # Editor Configuration
 $EDITOR = if (Test-CommandExists nvim) { 'nvim' }
@@ -646,7 +619,7 @@ function prompt {
     $cap = "$Esc[${BlueFG}m$RoundCap$Esc[0m"
 
     # Segment 1: user/machine label
-    $seg1 = "$Esc[$BlueBG;${White}m $env:USERNAME $Esc[0m"
+    $seg1 = "$Esc[$BlueBG;${White}m $env:USERNAME" + "@" + "$env:computername $Esc[0m"
     $arrow1 = "$Esc[$BlueFG;48;2;196;60;140m$Sep$Esc[0m"
 
     # Segment 2: path with heart icon
@@ -722,7 +695,8 @@ Use 'Show-Help' to display this help message.
 }
 
 # Write-host "$([char]0x1b)[1F" -nonewline
-Write-host "                                                                "
+Write-host "$([char]0x1b)[9A" -nonewline
+# Write-host "                                                                "
 
 #### Function to check if Terminal version is above 1.22 which is the first version to support inline graphics
 function Get-WindowsTerminalVersion {
@@ -745,7 +719,7 @@ function Get-WindowsTerminalVersion {
 $wtVersion = Get-WindowsTerminalVersion
 $minVersion = [version]'1.22.0.0'
 
-#### Execute sixel image conversion if the Terminal is v1.22 or higher
+#### Execute sixel image conversion if the Terminal is v1.22 + Execute fastfetch according to Terminal capabilities
 if ($wtVersion -and $wtVersion -ge $minVersion) {
 	# Check if $FFLogo exist and convert $FFLogo to $FFLogo + ".sixel" if the sixel-version doesn's exist in same folder.
 	$SixLogo = $FFlogo + ".sixel"
@@ -767,8 +741,10 @@ if ($wtVersion -and $wtVersion -ge $minVersion) {
 } else { 
 	If ($is2022) { fastfetch --logo "BlackPanther" --config archey --percent-type 11 --bar-char-total "-" --bar-char-elapsed "o" } else { fastfetch }
 }
-Write-host "                                                                "
+# Write-host "                                                                "
 Write-Host "Write 'Show-Help' to display overview of enhanced PowerShell commands in this setup" -f DarkGreen
+
+
 #############################################################################################################################################################
 #
 #	Changes last few versions
@@ -778,6 +754,7 @@ Write-Host "Write 'Show-Help' to display overview of enhanced PowerShell command
 #	- Replaced oh-my-posh with some simpler code that just sets a prompt and leave it at that.
 #	- Fixed bug where ConvertTo-Sixel didn't convert logo to appropriate format because of old terminal version.
 #   - Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if build is Windows 2025 / 11 shell.
+#   - Performance-optimized detection-procedures and logic, which almost halfed the execution time.
 #
 #	Version 2.8
 #	- ConvertTo-Sixel module added (since Windows Terminal now has support for real inline pictures like kitty on Linux, but in sixel format)
