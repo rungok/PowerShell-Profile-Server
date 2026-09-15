@@ -17,11 +17,11 @@ Execute the following command in an elevated PowerShell window to install the Po
 - Powershell v7.x
 - Chocolatey Packet Manager (winget replacement that works on server OS) with following packages
      - zoxide fuzzy shell (PowerShell enhancement with predictive writing and easier folder changes)
-     - Oh-My-Posh beautiful prompt with colors (and ribbons if you want)
      - Notepad++ (Extended Notepad app with colorizing of text-types and a lot of functions)
      - nerd-fonts-robotomono (good font with extended set of terminal icons)
 - VCLibs and .NET v4.8 (runtime libraries for C and .NET code needed for Windows Terminal to work)
 - Aliases to ease the everyday life of ppl switching often between Linux and Windows (grep and tail works just as in Linux)
+- Sets a beautiful pink ANSI-prompt with User, Path and Time.
 -----------------------------------------------------------------------------------------------------------------------------
 
 ## 🎨 PreView
