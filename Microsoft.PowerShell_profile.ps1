@@ -286,9 +286,9 @@ if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
 }
 
 #### DETECTION + Admin install: Powershell 7.x
-function Install-PowerShell {
+function Update-PowerShell {
 	if ($isAdmin) {
-		Write-Host "PowerShell v7.x is not installed. Starting the install..." -f Cyan
+		Write-Host "PowerShell v7.x is not installed or outdated. Downloading latest MSI and starting the installer..." -f Cyan
 		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
 		# iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"
 		# 1. Download the latest stable 64-bit MSI package
@@ -299,7 +299,7 @@ function Install-PowerShell {
 }
 
 if (-not (Test-CommandExists pwsh)) {
-	Install-PowerShell
+	Update-PowerShell
 	} else { 
   	Write-Detect "PowerShell Core (pwsh)"
 }
