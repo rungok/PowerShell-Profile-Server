@@ -21,8 +21,8 @@ $FFlogoHeight = 42 # Height in number of chars														#
 #																									#
 #  The script will be saved in path-string $PROFILE, which is the default placement					#
 #  Just write $PROFILE in Powershell if you wonder where it is. Usually in your						#
-#  $HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1 			for PowerShell v7.x	 		#
-#  $HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1 	for PowerShell v5.x			#
+#  $ENV:USERPROFILE\Documents\PowerShell\Microsoft.PowerShell_profile.ps1 		  PowerShell v7.x	#
+#  $ENV:USERPROFILE\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1  PowerShell v5.x	#
 #																									#
 #  Manual changes in Terminals needed after install:												#
 #  1. Change your font to RobotoMono Size 10														#
@@ -240,6 +240,7 @@ function Update-Profile {
 			Invoke-RestMethod https://github.com/$githubUser/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1 -OutFile $PROFILE.CurrentUserCurrentHost
 		}
         Write-Host "The profile has been created at " -f Cyan -nonewline;Write-Host $PROFILE;Write-Host "     and old profile renamed to " -f Cyan -nonewline;Write-Host $Bakfile -f DarkGray
+		Write-Host "To update your profile in default Powershell (probably v5.x) aswell, you must start such a window and run Update-Profile there also." -f Cyan
     }
     catch {
         Write-Error "Failed to backup and update the profile. Error: $_"
@@ -292,9 +293,9 @@ function Update-PowerShell {
 		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
 		# iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"
 		# 1. Download the latest stable 64-bit MSI package
-		Invoke-WebRequest -Uri 'https://github.com' -OutFile "$env:TEMP\pwsh7.msi"
+		Invoke-WebRequest -Uri 'https://github.com' -OutFile "$env:USERPROFILE\Downloads\pwsh7.msi"
 		# 2. Execute the Windows Installer quietly 
-		Start-Process msiexec.exe -ArgumentList '/i', "$env:TEMP\pwsh7.msi", '/quiet', '/norestart' -Wait
+		Start-Process msiexec.exe -ArgumentList '/i', "$env:USERPROFILE\Downloads\pwsh7.msi", '/quiet', '/norestart' -Wait
 		} else { Write-Host ("❌ Shell must be started in elevated mode to update or install Powershell v7.x") -f Cyan }
 }
 
@@ -310,7 +311,7 @@ if (-not (Test-CommandExists wt)) {
 		if ($is2022) {
   		Write-Host "❌ Microsoft Windows Terminal not found. Attempting to install required components and Terminal from Microsoft and Github...:" -f Cyan
 		 	try {
-					CD $Home\Downloads
+					CD $env:USERPROFILE\Downloads
 					if (!(Test-Path -Path '.\WindowsTerminalPreInstallKit')) { New-Item -Path '.\WindowsTerminalPreInstallKit' -ItemType "directory" }
 					CD .\WindowsTerminalPreinstallKit\
 					Write-Host "Downloading VCLibs..." -nonewline -f Cyan
@@ -507,9 +508,9 @@ function mkcd { param($dir) mkdir $dir -Force; Set-Location $dir }
 ### Quality of Life Aliases
 
 # Navigation Shortcuts
-function docs { Set-Location -Path $HOME\Documents }
+function docs { Set-Location -Path $ENV:USERPROFILE\Documents }
 
-function dtop { Set-Location -Path $HOME\Desktop }
+function dtop { Set-Location -Path $ENV:USERPROFILE\Desktop }
 
 # Quick Access to Editing the Profile
 function ep { vim $PROFILE }
@@ -614,7 +615,7 @@ $Sep      = [char]0xE0B0   # ""  sharp separator between segments
 $RoundCap = [char]0xE0B6   # ""  rounded starting cap
 
 function prompt {
-    $path = (Get-Location).Path.Replace($HOME, "~")
+    $path = (Get-Location).Path.Replace($ENV:USERPROFILE, "~")
 
     # Rounded cap: colored like segment 1, no background (blends into terminal bg)
     $cap = "$Esc[${BlueFG}m$RoundCap$Esc[0m"
