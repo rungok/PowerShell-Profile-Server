@@ -153,7 +153,7 @@ if (Test-CommandExists zoxide) {
 		Write-Host "❌ Zoxide command not found. Attempting to install via Chocolatey..." -nonewline -f Cyan
 		try {
 			choco install zoxide -y
-			Invoke-Expression (& { (zoxide init powershell | Out-String) })
+			Invoke-Expression (& { (zoxide init --cmd cd --hook prompt powershell | Out-String) })
 			Write-Host "Zoxide installed successfully. Initializing..." -ForegroundColor DarkGreen
 		} catch {
 			Write-Error "❌ Failed to install zoxide. Error: $_"
