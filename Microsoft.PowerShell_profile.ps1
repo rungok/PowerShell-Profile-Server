@@ -289,11 +289,12 @@ if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
 function Install-PowerShell {
 	if ($isAdmin) {
 		Write-Host "PowerShell v7.x is not installed. Starting the install..." -f Cyan
-		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"
-		# Start-Sleep -Seconds 8 # Wait for the update to finish
-		# Write-Host "Restarting the installation script with Powershell Core" -ForegroundColor DarkGreen
-		# Start-Process pwsh -ArgumentList "-NoExit", "-Command Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/$githubUser/powershell-profile-server/main/Microsoft.PowerShell_profile.ps1'-UseBasicParsing).Content"
-		# exit
+		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
+		# iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"
+		# 1. Download the latest stable 64-bit MSI package
+		Invoke-WebRequest -Uri 'https://github.com' -OutFile "$env:TEMP\pwsh7.msi"
+		# 2. Execute the Windows Installer quietly 
+		Start-Process msiexec.exe -ArgumentList '/i', "$env:TEMP\pwsh7.msi", '/quiet', '/norestart' -Wait
 		} else { Write-Host ("❌ Shell must be started in elevated mode to update or install Powershell v7.x") -f Cyan }
 }
 
