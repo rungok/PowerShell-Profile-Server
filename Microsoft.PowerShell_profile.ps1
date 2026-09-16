@@ -3,8 +3,8 @@ $tit = 'Pimped PowerShell-Profile for Windows v3.0 by GOKS0R'			 							#
 $githubUser = 'rungok'																				#
 $FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path     #
 $FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\indianai_cropped2.png' # logopath #
-$FFlogoWidth = 60  # Width  in number of chars														#
-$FFlogoHeight = 42 # Height in number of chars														#
+$FFlogoWidth = 60  # Width  in number of chars                                                      #
+$FFlogoHeight = 42 # Height in number of chars                                                      #
 #																									#
 #  This script will try to install Windows Terminal (even on Windows Server 2022),					#
 #  nice ANSI-prompt and other enhancments/alias so even some Linux-commands will work.				#
