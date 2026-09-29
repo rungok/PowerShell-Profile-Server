@@ -52,8 +52,6 @@ if ($isAdmin) {
 #### DETECTION: Check Windows version is Windows 10 or 2022 kernel (min build 18362) ####
 If (([Environment]::OSVersion).Version.Build -lt 18362) { [bool] $is2022 = $false } else { [bool] $is2022 = $true }
 
-
-
 #### DETECTION Online: Initial GitHub.com connectivity check with 1 second timeout ####
 $canConnectToGitHub = Test-Connection github.com -Count 1 -Quiet
 
@@ -80,15 +78,17 @@ function Test-CommandExists {
 #### CONFIG User: Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if Windows 11/2025 GUI ####
 If (([Environment]::OSVersion).Version.Build -ge 22000) {
 	[bool] $is2025 = $true
-	If (-not (Test-Path -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}")) {
-		# Set full rightclick menu to ENABLED
-		Write-Host "❌  No full-rightclick menu enabled... Enabling..." -f Cyan
+	
+	# Set full rightclick menu to ENABLED if not set
+	If (-not (Test-Path -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}")) {	Write-Host "❌  No full-rightclick menu enabled... Enabling..." -f Cyan;
 		New-Item -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" -Force
 	} Else { Write-Detect "Full RightClick Menu" }
-	
-	If (-not (Get-Item "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced").Property -contains "UseCompactMode")) {
-		# Set compact file explorer to ENABLED
-		Write-Host "❌  Compact file spacing setting not detected... Enabling..." -f Cyan
+
+	# Set compact file explorer to ENABLED
+	try { $CompactMode = Get-ItemPropertyValue -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "UseCompactMode" -ErrorAction SilentlyContinue } catch { $CompactMode = 0 }
+	If ($CompactMode -ne 1) {
+
+		Write-Host "❌  Compact file spacing setting not enabled... Enabling..." -f Cyan
 		Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "UseCompactMode" -Value 1
 	} Else { Write-Detect "Compact file spacing setting" }
 }
@@ -292,7 +292,7 @@ if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
 }
 
 #### DETECTION + Admin install: Powershell 7.x
-function Install-PowerShell {
+function Update-PowerShell {
 	if ($isAdmin) {
 		Write-Host "PowerShell v7.x is not installed. Starting the install..." -f Cyan
 		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"
@@ -304,7 +304,7 @@ function Install-PowerShell {
 }
 
 if (-not (Test-CommandExists pwsh)) {
-	Install-PowerShell
+	Update-PowerShell
 	} else { 
   	Write-Detect "PowerShell Core (pwsh)"
 }
@@ -660,7 +660,7 @@ function prompt {
     "$cap$seg1$arrow1$seg2$arrow2$seg3$arrow3 "
 }
 
-Write-Detect "Pimped-Bash-Prompt v0.8 started"
+Write-Detect "Pimped-Bash-Prompt v0.8 loaded"
 
 # Help Function
 function Show-Help {
