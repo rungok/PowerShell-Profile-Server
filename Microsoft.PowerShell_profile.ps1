@@ -52,16 +52,7 @@ if ($isAdmin) {
 #### DETECTION: Check Windows version is Windows 10 or 2022 kernel (min build 18362) ####
 If (([Environment]::OSVersion).Version.Build -lt 18362) { [bool] $is2022 = $false } else { [bool] $is2022 = $true }
 
-#### CONFIG User: Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if Windows 11/2025 ####
-If (([Environment]::OSVersion).Version.Build -ge 22000) {
-	[bool] $is2025 = $true
-	If (-not (Test-Path -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}")) {
-		# Set compact file explorer to ENABLED
-		Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "UseCompactMode" -Value 1
-		# Set full rightclick menu to ENABLED
-		New-Item -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" -Force
-	}	
-}
+
 
 #### DETECTION Online: Initial GitHub.com connectivity check with 1 second timeout ####
 $canConnectToGitHub = Test-Connection github.com -Count 1 -Quiet
@@ -86,6 +77,21 @@ function Test-CommandExists {
     return $exists
 }
 
+#### CONFIG User: Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if Windows 11/2025 GUI ####
+If (([Environment]::OSVersion).Version.Build -ge 22000) {
+	[bool] $is2025 = $true
+	If (-not (Test-Path -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}")) {
+		# Set full rightclick menu to ENABLED
+		Write-Host "❌  No full-rightclick menu enabled... Enabling..." -f Cyan
+		New-Item -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" -Force
+	} Else { Write-Detect "Full RightClick Menu" }
+	
+	If (-not (Get-Item "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced").Property -contains "UseCompactMode")) {
+		# Set compact file explorer to ENABLED
+		Write-Host "❌  Compact file spacing setting not detected... Enabling..." -f Cyan
+		Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "UseCompactMode" -Value 1
+	} Else { Write-Detect "Compact file spacing setting" }
+}
 
 ############################################################################
 ####### Test components status and install if they are not present #########
@@ -591,52 +597,70 @@ If ($PSVersionTable.PSVersion.Major -eq 7) {
 ########################################################################
 ##### Special Pink Prompt to replace the old Oh-My-Posh bloatware ##### 
 ########################################################################
-
 # --- Colors (tweak these RGB triples to taste) ---
 $Esc = [char]27
 
-# Segment background colors
-$BlueBG   = "48;2;76;94;172"    # "Rune" segment
-$PinkBG   = "48;2;196;60;140"   # "~\OneDrive" segment
-$LPinkBG  = "48;2;230;90;150"   # time segment
+# Segment background colors (M365Princess-style palette)
+$PlumBG  = "48;2;154;52;142"   # username segment
+$BlushBG = "48;2;218;98;125"   # path segment
+$TealBG  = "48;2;51;101;138"   # time segment
 
 # Segment foreground colors (for arrow transitions, matches previous bg)
-$BlueFG   = "38;2;76;94;172"
-$PinkFG   = "38;2;196;60;140"
-$LPinkFG  = "38;2;230;90;150"
+$PlumFG  = "38;2;154;52;142"
+$BlushFG = "38;2;218;98;125"
+$TealFG  = "38;2;51;101;138"
 
 $White    = "38;2;255;255;255"
-$Green    = "38;2;0;220;120"
 
 # Powerline separator glyphs (require Nerd Font)
 $Sep      = [char]0xE0B0   # ""  sharp separator between segments
 $RoundCap = [char]0xE0B6   # ""  rounded starting cap
+$Heart    = [System.Char]::ConvertFromUtf32(0x1F984)  # 🦄 unicorn icon, lives in the time segment
 
-function prompt {
-    $path = (Get-Location).Path.Replace($HOME, "~")
+# Home-subfolder icon substitutions (Font Awesome / Nerd Font)
+$IconDocuments = [char]0xF0F6  #  fa-file-text-o
+$IconDownloads = [char]0xF019  #  fa-download
+$IconMusic     = [char]0xF001  #  fa-music
+$IconPictures  = [char]0xF03E  #  fa-picture-o
 
-    # Rounded cap: colored like segment 1, no background (blends into terminal bg)
-    $cap = "$Esc[${BlueFG}m$RoundCap$Esc[0m"
-
-    # Segment 1: user/machine label
-    $seg1 = "$Esc[$BlueBG;${White}m $env:USERNAME" + "@" + "$env:computername $Esc[0m"
-    $arrow1 = "$Esc[$BlueFG;48;2;196;60;140m$Sep$Esc[0m"
-
-    # Segment 2: path with heart icon
-    $seg2 = "$Esc[$PinkBG;${White}m $path $Esc[0m"
-    $arrow2 = "$Esc[$PinkFG;48;2;230;90;150m$Sep$Esc[0m"
-
-    # Segment 3: time
-    $time = Get-Date -Format "HH:mm:ss"
-    $seg3 = "$Esc[$LPinkBG;${White}m $time $Esc[0m"
-    $arrow3 = "$Esc[${LPinkFG}m$Sep$Esc[0m"
-
-    # Cursor: green block, same line, no line break
-    $cursor = "$Esc[${Green}m$Esc[0m "
-
-    "$cap$seg1$arrow1$seg2$arrow2$seg3$arrow3$cursor"
+function Get-PathDisplay {
+    $cur = (Get-Location).Path
+    switch ($cur) {
+        $HOME                                { return "~" }
+        (Join-Path $HOME "Documents")        { return $IconDocuments }
+        (Join-Path $HOME "Downloads")        { return $IconDownloads }
+        (Join-Path $HOME "Music")            { return $IconMusic }
+        (Join-Path $HOME "Pictures")         { return $IconPictures }
+        default                              { return $cur.Replace($HOME, "~") }
+    }
 }
 
+function prompt {
+    $userHost = "$env:USERNAME  $env:COMPUTERNAME"
+    $path = Get-PathDisplay
+
+    # Rounded cap: colored like segment 1, no background (blends into terminal bg)
+    $cap = "$Esc[${PlumFG}m$RoundCap$Esc[0m"
+
+    # Segment 1: user/machine label
+    $seg1 = "$Esc[$PlumBG;${White}m $userHost $Esc[0m"
+    # Combined FG+BG in one escape (avoids two consecutive bare SGR sequences
+    # with no printable char between them, which some terminals mishandle)
+    $arrow1 = "$Esc[${PlumFG};${BlushBG}m$Sep$Esc[0m"
+
+    # Segment 2: path
+    $seg2 = "$Esc[$BlushBG;${White}m  $path $Esc[0m"
+    $arrow2 = "$Esc[${BlushFG};${TealBG}m$Sep$Esc[0m"
+
+    # Segment 3: unicorn + time together
+    $time = Get-Date -Format "HH:mm:ss"
+    $seg3 = "$Esc[$TealBG;${White}m $time $Heart $Esc[0m"
+    $arrow3 = "$Esc[${TealFG}m$Sep$Esc[0m"
+
+    "$cap$seg1$arrow1$seg2$arrow2$seg3$arrow3 "
+}
+
+Write-Detect "Pimped-Bash-Prompt v0.8 started"
 
 # Help Function
 function Show-Help {
