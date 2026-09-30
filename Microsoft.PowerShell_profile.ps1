@@ -75,7 +75,12 @@ function Test-CommandExists {
     return $exists
 }
 
-#### CONFIG User: Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if Windows 11/2025 GUI ####
+############################################################################
+####### Test components status and install if they are not present #########
+############################################################################
+
+#### Power User registry settings to remove Windows 11 GUI suckiness (if script started in that kernel version or higher of course)
+#
 If (([Environment]::OSVersion).Version.Build -ge 22000) {
 	[bool] $is2025 = $true
 	
@@ -87,16 +92,39 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 	# Set compact file explorer to ENABLED
 	try { $CompactMode = Get-ItemPropertyValue -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "UseCompactMode" -ErrorAction SilentlyContinue } catch { $CompactMode = 0 }
 	If ($CompactMode -ne 1) {
-
 		Write-Host "❌  Compact file spacing setting not enabled... Enabling..." -f Cyan
 		Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "UseCompactMode" -Value 1
 	} Else { Write-Detect "Compact file spacing setting" }
+
+	#### .NET method of checking registry and modifying it with a new value if the value from before isn't there or the wrong one
+	# Accordng to Claude this is the fastest way of doing this compared to PowerShell or MS-DOS native commands
+	# Usage: Set-RegDefault -Path 'HKCU:\Software\MyApp' -Name 'MySetting' -Value 1
+
+	function Set-RegDefault {
+		param($Path, $Name, $Value, $Type = 'DWord')
+		$key = $Path -replace '^HKCU', 'HKEY_CURRENT_USER' -replace '^HKLM', 'HKEY_LOCAL_MACHINE'
+		if ($Value -ne [Microsoft.Win32.Registry]::GetValue($key, $Name, $null)) {
+			# Debug: Write-Host "[Microsoft.Win32.Registry]::SetValue($key, $Name, $Value, $Type)"
+			[Microsoft.Win32.Registry]::SetValue($key, $Name, $Value, $Type)
+		}
+	}
+	
+	# Settings > Personalization > Taskbar > Search > Hide
+	Set-RegDefault -Path 'HKCU\Software\Microsoft\Windows\CurrentVersion\Search' -Name 'SearchboxTaskbarMode' -Value 0
+	# Settings > Personalization > Taskbar > Task view > Off
+	Set-RegDefault -Path 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'ShowTaskViewButton' -Value 0
+	# Settings > System > Multitasking > Snap windows > Suggest > Off
+	Set-RegDefault -Path 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'SnapAssist' -Value 0
+	# Settings > System > Multitasking > Show tabs on Alt+Tab > Don't show
+	Set-RegDefault -Path 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'MultiTaskingAltTabFilter' -Value 3
+	
+	if ($isAdmin) {
+		# Settings > Personalization > Taskbar > Widgets > Off
+		Set-RegDefault -Path 'HKLM\Software\Policies\Microsoft\Dsh' -Name 'AllowNewsAndInterests' -Value 0
+		# Long paths in file explorer
+		Set-RegDefault -Path 'HKLM\SYSTEM\CurrentControlSet\Control\FileSystem' -Name 'LongPathsEnabled' -Value 1
+	}
 }
-
-############################################################################
-####### Test components status and install if they are not present #########
-############################################################################
-
 
 # DETECTION + User install: NuGet provider to ensure the other packages can be installed.
 $nugetProvider = Get-PackageProvider | Select-Object Name | Where-Object Name -match NuGet
@@ -292,7 +320,7 @@ if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
 }
 
 #### DETECTION + Admin install: Powershell 7.x
-function Update-PowerShell {
+function Install-PowerShell {
 	if ($isAdmin) {
 		Write-Host "PowerShell v7.x is not installed. Starting the install..." -f Cyan
 		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"
@@ -304,7 +332,7 @@ function Update-PowerShell {
 }
 
 if (-not (Test-CommandExists pwsh)) {
-	Update-PowerShell
+	Install-PowerShell
 	} else { 
   	Write-Detect "PowerShell Core (pwsh)"
 }
@@ -659,8 +687,57 @@ function prompt {
 
     "$cap$seg1$arrow1$seg2$arrow2$seg3$arrow3 "
 }
+Write-Detect "Pimped-Bash-Prompt"
 
-Write-Detect "Pimped-Bash-Prompt v0.8 loaded"
+# Write-host "$([char]0x1b)[1F" -nonewline
+Write-host "$([char]0x1b)[9A" -nonewline
+# Write-host "                                                                "
+
+#### Function to check if Terminal version is above 1.22 which is the first version to support inline graphics
+function Get-WindowsTerminalVersion {
+    $currentPid = $PID
+    while ($currentPid) {
+        $proc = Get-Process -Id $currentPid -ErrorAction SilentlyContinue
+        if ($proc -and $proc.ProcessName -eq 'WindowsTerminal') {
+            $path = $proc.Path
+            if ($path) {
+                $verInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($path)
+                return [version]$verInfo.FileVersion
+            }
+        }
+        $currentPid = $proc.Parent.Id
+    }
+    return $null
+}
+
+# Check version
+$wtVersion = Get-WindowsTerminalVersion
+$minVersion = [version]'1.22.0.0'
+
+#### Execute sixel image conversion if the Terminal is v1.22 + Execute fastfetch according to Terminal capabilities
+if ($wtVersion -and $wtVersion -ge $minVersion) {
+	# Check if $FFLogo exist and convert $FFLogo to $FFLogo + ".sixel" if the sixel-version doesn's exist in same folder.
+	$SixLogo = $FFlogo + ".sixel"
+	if ((Test-Path -Path $FFLogo -PathType Leaf)) {
+		# Remove old fubar file.sixel if it exist
+		if ((Test-Path -Path $SixLogo -PathType Leaf)) {
+			$SixObject = Get-Item -Path $Sixlogo
+			If ($SixObject.Length -eq 0) { Remove-Item -Path $Sixlogo -Force }
+		}
+		# convert image to sixel format
+		if (!(Test-Path -Path $SixLogo -PathType Leaf)) {
+			ConvertTo-Sixel $FFlogo -Width $FFlogoWidth -Height $FFlogoHeight > $SixLogo
+		}
+	} 
+
+	# Executing FastFetch (neofetch-port but faster compiled in C++)
+	fastfetch --raw $SixLogo --logo-width $FFlogoWidth --logo-height $FFlogoHeight --config $FFConfig
+	# optionally --logo-width 55 --logo-height 28 --logo-padding-top 1 --logo-padding 5 (--logo-width $NUMBER_OF_COLUMNS_USED --logo-height $NUMBER_OF_ROWS_USED)
+} else { 
+	If ($is2022) { fastfetch --logo "Windows" --percent-type 11 --bar-char-total "-" --bar-char-elapsed "o" } else { fastfetch }
+}
+# Write-host "                                                                "
+Write-Host "Write 'Show-Help' to display overview of enhanced PowerShell commands in this setup" -f DarkGreen
 
 # Help Function
 function Show-Help {
@@ -717,57 +794,6 @@ Help for $tit
 Use 'Show-Help' to display this help message.
 "@
 }
-
-# Write-host "$([char]0x1b)[1F" -nonewline
-Write-host "$([char]0x1b)[9A" -nonewline
-# Write-host "                                                                "
-
-#### Function to check if Terminal version is above 1.22 which is the first version to support inline graphics
-function Get-WindowsTerminalVersion {
-    $currentPid = $PID
-    while ($currentPid) {
-        $proc = Get-Process -Id $currentPid -ErrorAction SilentlyContinue
-        if ($proc -and $proc.ProcessName -eq 'WindowsTerminal') {
-            $path = $proc.Path
-            if ($path) {
-                $verInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($path)
-                return [version]$verInfo.FileVersion
-            }
-        }
-        $currentPid = $proc.Parent.Id
-    }
-    return $null
-}
-
-# Check version
-$wtVersion = Get-WindowsTerminalVersion
-$minVersion = [version]'1.22.0.0'
-
-#### Execute sixel image conversion if the Terminal is v1.22 + Execute fastfetch according to Terminal capabilities
-if ($wtVersion -and $wtVersion -ge $minVersion) {
-	# Check if $FFLogo exist and convert $FFLogo to $FFLogo + ".sixel" if the sixel-version doesn's exist in same folder.
-	$SixLogo = $FFlogo + ".sixel"
-	if ((Test-Path -Path $FFLogo -PathType Leaf)) {
-		# Remove old fubar file.sixel if it exist
-		if ((Test-Path -Path $SixLogo -PathType Leaf)) {
-			$SixObject = Get-Item -Path $Sixlogo
-			If ($SixObject.Length -eq 0) { Remove-Item -Path $Sixlogo -Force }
-		}
-		# convert image to sixel format
-		if (!(Test-Path -Path $SixLogo -PathType Leaf)) {
-			ConvertTo-Sixel $FFlogo -Width $FFlogoWidth -Height $FFlogoHeight > $SixLogo
-		}
-	} 
-
-	# Executing FastFetch (neofetch-port but faster compiled in C++)
-	fastfetch --raw $SixLogo --logo-width $FFlogoWidth --logo-height $FFlogoHeight --config $FFConfig
-	# optionally --logo-width 55 --logo-height 28 --logo-padding-top 1 --logo-padding 5 (--logo-width $NUMBER_OF_COLUMNS_USED --logo-height $NUMBER_OF_ROWS_USED)
-} else { 
-	If ($is2022) { fastfetch --logo "Windows" --percent-type 11 --bar-char-total "-" --bar-char-elapsed "o" } else { fastfetch }
-}
-# Write-host "                                                                "
-Write-Host "Write 'Show-Help' to display overview of enhanced PowerShell commands in this setup" -f DarkGreen
-
 
 #############################################################################################################################################################
 #
