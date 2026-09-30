@@ -1,10 +1,10 @@
 #####################################################################################################
-$tit = 'Pimped PowerShell-Profile for Windows v3.0 by GOKS0R'			 							#
+$tit = 'Pimped PowerShell-Profile for Windows v3.1 by GOKS0R'			 							#
 $githubUser = 'rungok'																				#
 $FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path		#
-$FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\indianai_cropped2.png' # logopath	#
+$FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\harley7.png' # logopath			#
 $FFlogoWidth = 60  # Width  in number of chars														#
-$FFlogoHeight = 42 # Height in number of chars														#
+$FFlogoHeight = 35 # Height in number of chars														#
 #																									#
 #  This script will try to install Windows Terminal (even on Windows Server 2022),					#
 #  nice ANSI-prompt and other enhancments/alias so even some Linux-commands will work.				#
@@ -31,10 +31,10 @@ $FFlogoHeight = 42 # Height in number of chars														#
 #  Picture logo will be converted to raw sixel format to work in Windows Terminal v1.22+			#
 #####################################################################################################
 
-Write-Host("`n         .--------< ") -f white -nonewline
+Write-Host("`n .--------< ") -f white -nonewline
 Write-Host($tit) -f Cyan -nonewline
 Write-Host(" >----------------.") -f white
-Write-Host("         '--------------------------------------------------------------------------------'`n") -f white
+Write-Host(" '--------------------------------------------------------------------------------'`n") -f white
 
 $execPolicy = Get-ExecutionPolicy
 if ($execPolicy -ne "RemoteSigned") {
@@ -251,34 +251,27 @@ If (choco list --local-only --limit-output | ConvertFrom-Csv -Delimiter '|' -Hea
  	choco install nerd-fonts-robotomono -y
 }
 
+#### DETECTION + Admin install: Powershell 7.x
+function Install-PowerShell {
+	if ($isAdmin) {
+		Write-Host "PowerShell v7.x is not installed. Starting the install..." -f Cyan
+		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"
+		# Start-Sleep -Seconds 8 # Wait for the update to finish
+		# Write-Host "Restarting the installation script with Powershell Core" -ForegroundColor DarkGreen
+		# Start-Process pwsh -ArgumentList "-NoExit", "-Command Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/$githubUser/powershell-profile-server/main/Microsoft.PowerShell_profile.ps1'-UseBasicParsing).Content"
+		# exit
+		} else { Write-Host ("❌ Shell must be started in elevated mode to update or install Powershell v7.x") -f Cyan }
+}
+
+if (-not (Test-CommandExists pwsh)) {
+	Install-PowerShell
+	} else { 
+  	Write-Detect "PowerShell Core (pwsh)"
+}
 
 ################################################################################################################
 ####### Profile creation or update if not present + download example picture and FastFetch config-file #########
 ################################################################################################################
-
-#### Command to ad-hoc Download and write new profile for current version of Powershell + rename old to file+timemarker.ps1.
-function Update-Profile {
-    try {
-		#### Test if My Documents is redirected by GPO so profiles has to be present under that folder instead
-		Write-Host "Trying to download latest profile from GitHub. You old will be renamed to <filename><timestamp>.ps1 if it exist." -f Cyan
-		Write-Host "Move any custom config at top of old file manually to the new if you had some special picture or FastFetch config." -f Cyan
-		Write-Host ""
-		
-		# Create bak-filename and rename current profile to that filename
-		$TimeMarker = Get-Date -Format "ddMMyyyy_HHmm"
-		$Bakfile = ($PROFILE.CurrentUserCurrentHost -replace ".{4}$")+"_"+$TimeMarker+".ps1"
-		Move-Item -Path $PROFILE.CurrentUserCurrentHost -Destination $Bakfile -Force
-        
-		# Test if current profile still exist (bak-rename may have failed) and download new one if it doesn't
-		if (!(Test-Path -Path $PROFILE.CurrentUserCurrentHost -PathType Leaf)) {
-			Invoke-RestMethod https://github.com/$githubUser/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1 -OutFile $PROFILE.CurrentUserCurrentHost
-		}
-        Write-Host "The profile has been created at " -f Cyan -nonewline;Write-Host $PROFILE;Write-Host "     and old profile renamed to " -f Cyan -nonewline;Write-Host $Bakfile -f DarkGray
-    }
-    catch {
-        Write-Error "Failed to backup and update the profile. Error: $_"
-    }
-}
 
 #### Try to Create Profiles for both versions of Powershell if they don't exist.
 # Detect Documents redirection
@@ -305,36 +298,52 @@ if (!(Test-Path -Path $profilePath\Microsoft.PowerShell_profile.ps1 -PathType Le
     catch { Write-Error "Failed to create or update the profile. Error: $_" }
 }
 
-#### DETECTION + User download: fastfetch example profile picture and config at ~/.config/fastfetch/ if they don't exist.
-if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
-    try {
+#### DETECTION + User download: fastfetch example profile picture and config at %localappdata%\fastfetch if they don't exist.
+function Update-Examples {
+	try {
         # Create Profile directories if they do not exist.
-	    $FFPath = Join-Path -Path $env:localappdata -ChildPath "fastfetch"
+		$FFPath = Join-Path -Path $env:localappdata -ChildPath "fastfetch"
 	    if (!(Test-Path -Path $FFPath)) { New-Item -Path $FFPath -ItemType "directory" }
+		$JKPath = Join-Path -Path $FFPath -ChildPath "JokerSmoking.png"
      	Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/frames.jsonc -OutFile $FFConfig
         Write-Host "FastFetch config-file @ [$FFConfig] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
-		Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/indianai_cropped2.png -OutFile $FFlogo
+		Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/harley7.png -OutFile $FFlogo
         Write-Host "FastFetch profile-pic @ [$FFlogo] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
-    	}
-    catch { Write-Error "Failed to create or update $FFConfig and/or $FFLogo. Error: $_" }
+		Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/JokerSmoking.png -OutFile $JKPath
+        Write-Host "FastFetch profile-pic @ [$FFPath\JokerSmoking.png] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
+    }
+    catch { Write-Error "Failed to create or update $FFConfig, $JKPath and/or $FFLogo. Error: $_" }
 }
 
-#### DETECTION + Admin install: Powershell 7.x
-function Install-PowerShell {
-	if ($isAdmin) {
-		Write-Host "PowerShell v7.x is not installed. Starting the install..." -f Cyan
-		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"
-		# Start-Sleep -Seconds 8 # Wait for the update to finish
-		# Write-Host "Restarting the installation script with Powershell Core" -ForegroundColor DarkGreen
-		# Start-Process pwsh -ArgumentList "-NoExit", "-Command Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/$githubUser/powershell-profile-server/main/Microsoft.PowerShell_profile.ps1'-UseBasicParsing).Content"
-		# exit
-		} else { Write-Host ("❌ Shell must be started in elevated mode to update or install Powershell v7.x") -f Cyan }
+if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
+	Update-Examples
 }
 
-if (-not (Test-CommandExists pwsh)) {
-	Install-PowerShell
-	} else { 
-  	Write-Detect "PowerShell Core (pwsh)"
+#### Command to ad-hoc Update new version of profile + support-files for current version of Powershell + rename old to file+timemarker.ps1.
+function Update-Profile {
+    try {
+		#### Test if My Documents is redirected by GPO so profiles has to be present under that folder instead
+		Write-Host "Trying to download latest profile from GitHub. You old will be renamed to <filename><timestamp>.ps1 if it exist." -f Cyan
+		Write-Host "Move any custom config at top of old file manually to the new if you had some special picture or FastFetch config." -f Cyan
+		Write-Host ""
+		
+		# Create bak-filename and rename current profile to that filename
+		$TimeMarker = Get-Date -Format "ddMMyyyy_HHmm"
+		$Bakfile = ($PROFILE.CurrentUserCurrentHost -replace ".{4}$")+"_"+$TimeMarker+".ps1"
+		Move-Item -Path $PROFILE.CurrentUserCurrentHost -Destination $Bakfile -Force
+        
+		# Test if current profile still exist (bak-rename may have failed) and download new one if it doesn't
+		if (!(Test-Path -Path $PROFILE.CurrentUserCurrentHost -PathType Leaf)) {
+			Invoke-RestMethod https://github.com/$githubUser/powershell-profile-server/raw/main/Microsoft.PowerShell_profile.ps1 -OutFile $PROFILE.CurrentUserCurrentHost
+		}
+        Write-Host "The profile has been created at " -f Cyan -nonewline;Write-Host $PROFILE;Write-Host "     and old profile renamed to " -f Cyan -nonewline;Write-Host $Bakfile -f DarkGray
+		
+		# Example pictures and config overwrite old ones
+		Update-Examples
+    }
+    catch {
+        Write-Error "Failed to backup and update the profile. Error: $_"
+    }
 }
 
 #### DETECTION + Admin install: Microsoft Windows Terminal for Windows 2022/10 kernel
@@ -799,9 +808,13 @@ Use 'Show-Help' to display this help message.
 #
 #	Changes last few versions
 #
+#	Version 3.1
+#	- Reconstructed example theme to a Joker and Harlequin Theme, where JokerSmoking.png is suppose to be config'ed as background pic in terminal.
+#	- Updated Update-Profile function to also download and update fastfetch-logo, config and terminal background pic. 
+#
 #	Version 3.0
 #	- Removed bug trying to overwrite the default history alias, which Powershell doesn't accept.
-#	- Replaced oh-my-posh with some simpler code that just sets a prompt and leave it at that.
+#	- Replaced oh-my-posh with some simpler code that just sets a prompt and leave it at that (much faster than the bloated Oh-My-Posh).
 #	- Fixed bug where ConvertTo-Sixel didn't convert logo to appropriate format because of old terminal version.
 #   - Set full right-click menu to ENABLED and Compact File Explorer to ENABLED if build is Windows 2025 / 11 shell.
 #   - Performance-optimized detection-procedures and logic, which almost halfed the execution time.
