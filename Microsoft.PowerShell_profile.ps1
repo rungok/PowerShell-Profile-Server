@@ -259,7 +259,8 @@ if (Test-CommandExists fastfetch) {
 }
 
 # DETECTION + User install: RobotoMono Nerd Font (if not installed)
-If (choco list --local-only --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version | Select-Object Name | Where-Object Name -match robotomono) {
+$RoboInstalled = [bool](fontget list "roboto-mono" 2>$null)
+If ($RoboInstalled) {
 	Write-Detect "RobotoMono Nerd Font"
 } else {
 	try {
