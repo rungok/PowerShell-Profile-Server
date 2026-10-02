@@ -198,6 +198,8 @@ if (Test-CommandExists zoxide) {
 			Write-Host "Zoxide installed successfully. Initializing..." -ForegroundColor DarkGreen
 		} catch {
 			Write-Error "❌ Failed to install zoxide. Error: $_"
+			Write-Host "Trying winget instead..." -f Cyan
+			winget install zoxide
 		}
 	} else { Write-Host ("❌ Terminal must be started in elevated mode to install Zoxide. Fuzzy shell will not be activated until this is done.") -f Cyan }
 }
@@ -214,6 +216,8 @@ if (Test-CommandExists Notepad++) {
    			refreshenv
 		} catch {
 			Write-Error "❌ Failed to install Notepad++. Error: $_"
+			Write-Host "Trying winget instead..." -f Cyan
+			winget install notepad++
 		}
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install Notepad++.") -f Cyan }
 }
@@ -230,6 +234,8 @@ if (Test-CommandExists Magick) {
    			refreshenv
 		} catch {
 			Write-Error "❌ Failed to install ImageMagick. Error: $_"
+			Write-Host "Trying winget instead..." -f Cyan
+			winget install imagemagick.Q16-HDRI
 		}
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install ImageMagick.") -f Cyan }
 }
@@ -245,7 +251,8 @@ if (Test-CommandExists fastfetch) {
 			Write-Host "FastFetch installed successfully. Initializing..." -ForegroundColor DarkGreen
    			refreshenv
 		} catch {
-			Write-Error "❌ Failed to install FastFetch. Error: $_"
+			Write-Error "❌ Failed to install FastFetch. Error: $_";Write-Host "Trying winget instead..." -f Cyan
+			winget install fastfetch
 		}
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install FastFetch.") -f Cyan }
 }
@@ -254,8 +261,14 @@ if (Test-CommandExists fastfetch) {
 If (choco list --local-only --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version | Select-Object Name | Where-Object Name -match robotomono) {
 	Write-Detect "RobotoMono Nerd Font"
 } else {
- 	Write-Host "❌ RobotoMono nerd font not installed. Attempting to install via " -nonewline -f Cyan
+	try {
+ 	Write-Host "❌ RobotoMono nerd font not installed. Attempting to install" -nonewline -f Cyan
  	choco install nerd-fonts-robotomono -y
+	} catch { 
+		Write-Error "❌ Failed to install FastFetch. Error: $_";Write-Host "Trying winget instead..." -f Cyan
+		winget install -e --id Graphixa.FontGet
+		fontget add nerd.roboto-mono --accept-agreements --accept-defaults
+	}
 }
 
 #### DETECTION + Admin install: Powershell 7.x
