@@ -191,15 +191,17 @@ if (Test-CommandExists zoxide) {
 	Set-Alias -Name zi -Value __zoxide_zi -Option AllScope -Scope Global -Force
 } else {
 	if ($isAdmin) {
-		Write-Host "❌ Zoxide command not found. Attempting to install via Chocolatey..." -nonewline -f Cyan
+		Write-Host "❌ Zoxide command not found. Attempting to install via WinGet..." -nonewline -f Cyan
 		try {
-			choco install zoxide -y
+			winget install zoxide
+			Write-Host "Zoxide installed successfully from WinGet. Initializing..." -ForegroundColor DarkGreen
 			Invoke-Expression (& { (zoxide init powershell | Out-String) })
-			Write-Host "Zoxide installed successfully. Initializing..." -ForegroundColor DarkGreen
 		} catch {
 			Write-Error "❌ Failed to install zoxide. Error: $_"
-			Write-Host "Trying winget instead..." -f Cyan
-			winget install zoxide
+			Write-Host "Trying choco instead..." -f Cyan
+			choco install zoxide -y
+			Write-Host "Zoxide installed successfully from ChocoLatey. Initializing..." -ForegroundColor DarkGreen
+			Invoke-Expression (& { (zoxide init powershell | Out-String) })
 		}
 	} else { Write-Host ("❌ Terminal must be started in elevated mode to install Zoxide. Fuzzy shell will not be activated until this is done.") -f Cyan }
 }
@@ -212,12 +214,11 @@ if (Test-CommandExists Notepad++) {
 		Write-Host "❌ Notepad++ not installed. Attempting to install via " -nonewline -f Cyan
 		try {
 			winget install notepad++
-			choco install notepadplusplus -y
-   			refreshenv
 		} catch {
 			Write-Error "❌ Failed to install Notepad++. Error: $_"
 			Write-Host "Trying choko instead..." -f Cyan
 			choco install notepadplusplus -y
+   			refreshenv
 		}
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install Notepad++.") -f Cyan }
 }
@@ -229,13 +230,12 @@ if (Test-CommandExists Magick) {
 	if ($isAdmin) {
 		Write-Host "❌ ImageMagick not installed. Attempting to install via " -nonewline -f Cyan
 		try {
-			choco install imagemagick -y
-			Write-Host "ImageMagick installed successfully. Initializing..." -ForegroundColor DarkGreen
-   			refreshenv
+			winget install imagemagick.Q16-HDRI
 		} catch {
 			Write-Error "❌ Failed to install ImageMagick. Error: $_"
-			Write-Host "Trying winget instead..." -f Cyan
-			winget install imagemagick.Q16-HDRI
+			Write-Host "Trying choko instead..." -f Cyan
+			choco install imagemagick -y
+   			refreshenv
 		}
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install ImageMagick.") -f Cyan }
 }
