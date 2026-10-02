@@ -207,7 +207,8 @@ if (Test-CommandExists zoxide) {
 }
 
 # DETECTION + Admin install: Notepad++ (if not installed and shell is started in administrative mode)
-if (Test-CommandExists Notepad++) {
+$np = $env:ProgramFiles + '\Notepad++\Notepad++.exe'
+if (Test-CommandExists $np) {
 	Write-Detect "Notepad++"
 } else {
 	if ($isAdmin) {
