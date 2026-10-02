@@ -1,34 +1,34 @@
 #####################################################################################################
-$tit = 'Pimped PowerShell-Profile for Windows v3.2 by GOKS0R'			 							#
-$githubUser = 'rungok'																				#
-$FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path		#
-$FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\harley7.png' # logopath			#
-$FFlogoWidth = 60  # Width  in number of chars														#
-$FFlogoHeight = 35 # Height in number of chars														#
-#																									#
-#  This script will try to install Windows Terminal (even on Windows Server 2022),					#
-#  nice ANSI-prompt and other enhancments/alias so even some Linux-commands will work.				#
-#																									#
-#  The reason for making this script was to Rise up the CLI environment quickly when setting   		#
-#  up VM servers by installing Windows Terminal, Fastfetch, NerdFont, Notepad++, Prompt				#
-#  and a bunch of aliases for those of us that jump between Linux and Windows on a regular basis.	#
-#  It won't meddle with other users	environment or overwrite any existing profiles if they already  #
-#  exist (existing will be renamed to <filename><timestamp>.bak).									#
-#																									#
-#  A lot of testing has been done to make sure it doesn't mess up existing setups or overwrite		#
-#  anything important in any way, so it should be safe to use on customers servers.					#			
-#  It's also tested on 2019 (although it will skip installing Windows Terminal) and Win11.    		#
-#																									#
-#  The script will be saved in path-string $PROFILE, which is the default placement					#
-#  Just write $PROFILE in Powershell if you wonder where it is. Usually in your						#
-#  $HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1 			for PowerShell v7.x	 		#
-#  $HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1 	for PowerShell v5.x			#
-#																									#
-#  Manual changes in Terminals needed after install:												#
-#  1. Change your font to RobotoMono Size 10														#
-#  2. Set font rendering to ClearType for icon rendering											#
-#  																									#
-#  Picture logo will be converted to raw sixel format to work in Windows Terminal v1.22+			#
+$tit = 'Pimped PowerShell-Profile for Windows v3.2 by GOKS0R'
+$githubUser = 'rungok'
+$FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path
+$FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\harley7.png' # logopath
+$FFlogoWidth = 60  # Width  in number of chars
+$FFlogoHeight = 35 # Height in number of chars
+#
+#  This script will try to install Windows Terminal (even on Windows Server 2022),
+#  nice ANSI-prompt and other enhancments/alias so even some Linux-commands will work.
+#
+#  The reason for making this script was to Rise up the CLI environment quickly when setting
+#  up VM servers by installing Windows Terminal, Fastfetch, NerdFont, Notepad++, Prompt
+#  and a bunch of aliases for those of us that jump between Linux and Windows on a regular basis.
+#  It won't meddle with other users	environment or overwrite any existing profiles if they already
+#  exist (existing will be renamed to <filename><timestamp>.bak).
+#
+#  A lot of testing has been done to make sure it doesn't mess up existing setups or overwrite
+#  anything important in any way, so it should be safe to use on customers servers.		
+#  It's also tested on 2019 (although it will skip installing Windows Terminal) and Win11.
+#
+#  The script will be saved in path-string $PROFILE, which is the default placement
+#  Just write $PROFILE in Powershell if you wonder where it is. Usually in your
+#  $HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1 			for PowerShell v7.x
+#  $HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1 	for PowerShell v5.x
+#
+#  Manual changes in Terminals needed after install:
+#  1. Change your font to RobotoMono Size 10
+#  2. Set font rendering to ClearType for icon rendering
+#
+#  Picture logo will be converted to raw sixel format to work in Windows Terminal v1.22+
 #####################################################################################################
 
 Write-Host("`n .--------< ") -f white -nonewline
