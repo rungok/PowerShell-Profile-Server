@@ -211,13 +211,13 @@ if (Test-CommandExists Notepad++) {
 	if ($isAdmin) {
 		Write-Host "❌ Notepad++ not installed. Attempting to install via " -nonewline -f Cyan
 		try {
+			winget install notepad++
 			choco install notepadplusplus -y
-			Write-Host "Notepad++ installed successfully. Initializing..." -ForegroundColor DarkGreen
    			refreshenv
 		} catch {
 			Write-Error "❌ Failed to install Notepad++. Error: $_"
-			Write-Host "Trying winget instead..." -f Cyan
-			winget install notepad++
+			Write-Host "Trying choko instead..." -f Cyan
+			choco install notepadplusplus -y
 		}
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install Notepad++.") -f Cyan }
 }
@@ -263,11 +263,11 @@ If (choco list --local-only --limit-output | ConvertFrom-Csv -Delimiter '|' -Hea
 } else {
 	try {
  	Write-Host "❌ RobotoMono nerd font not installed. Attempting to install" -nonewline -f Cyan
- 	choco install nerd-fonts-robotomono -y
+ 	winget install -e --id Graphixa.FontGet
+	fontget add nerd.roboto-mono --accept-agreements --accept-defaults
 	} catch { 
-		Write-Error "❌ Failed to install FastFetch. Error: $_";Write-Host "Trying winget instead..." -f Cyan
-		winget install -e --id Graphixa.FontGet
-		fontget add nerd.roboto-mono --accept-agreements --accept-defaults
+		Write-Error "❌ Failed to install FastFetch. Error: $_";Write-Host "Trying choko instead..." -f Cyan
+		choco install nerd-fonts-robotomono -y
 	}
 }
 
