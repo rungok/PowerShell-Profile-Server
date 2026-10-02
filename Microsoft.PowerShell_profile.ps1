@@ -1,5 +1,5 @@
 #####################################################################################################
-$tit = 'Pimped PowerShell-Profile for Windows v3.1 by GOKS0R'			 							#
+$tit = 'Pimped PowerShell-Profile for Windows v3.2 by GOKS0R'			 							#
 $githubUser = 'rungok'																				#
 $FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path		#
 $FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\harley7.png' # logopath			#
