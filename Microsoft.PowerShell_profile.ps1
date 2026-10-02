@@ -224,6 +224,24 @@ if (Test-CommandExists $np) {
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install Notepad++.") -f Cyan }
 }
 
+# DETECTION + Admin install: BGInfo (if not installed and shell is started in administrative mode)
+if (Test-CommandExists bginfo64) {
+	Write-Detect "BGInfo64"
+} else {
+	if ($isAdmin) {
+		Write-Host "❌ BGInfo not installed. Attempting to install via" -nonewline -f Cyan
+		try {
+			winget install -e --id Microsoft.Sysinternals.BGInfo winget --disable-interactivity
+			# Launch with just bginfo64.exe or silent: bginfo /timer:0 /silent /nolicprompt
+		} catch {
+			Write-Error "❌ Failed to install BGInfo. Error: $_"
+			Write-Host "Trying choko instead..." -f Cyan
+			choco install bginfo -y
+   			refreshenv
+		}
+	} else { Write-Host ("❌ Powershell must be started in elevated mode to install BGInfo.") -f Cyan }
+}
+
 # DETECTION + Admin install: ImageMagick (if not installed and shell is started in administrative mode)
 if (Test-CommandExists Magick) {
 	Write-Detect "ImageMagick"
