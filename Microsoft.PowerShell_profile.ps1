@@ -166,8 +166,15 @@ if (-not (Test-CommandExists choco)) {
 	if ($isAdmin) {
 		Write-Host ("Trying to install...") -nonewline -f Cyan
 		Set-ExecutionPolicy Bypass -Scope Process -Force
-  		[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-    		iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+		[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+		Try {
+			iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+			} catch {
+			Write-Host ("Something is blocking downloads of ps1-files from the net, trying winget method..:") -nonewline -f Red
+			winget install --id chocolatey.chocolatey --source winget
+			$env:Path +=  ";$env:allusersprofile\chocolatey\bin"
+			$env:ChocolateyInstall = $env:allusersprofile + "\chocolatey"
+		}	
 		$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1";if (Test-Path($ChocolateyProfile)) { Import-Module "$ChocolateyProfile" }
   		refreshenv
 		} else { Write-Host ("❌ Terminal must be started in elevated mode to install Chocolatey. Some extensions will not be activated until this is done.") -f Cyan }
