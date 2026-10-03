@@ -135,58 +135,55 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     $ProgressPreference = 'SilentlyContinue'
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     
-    # Load native memory compression streams to avoid OS file system event hooks
     Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-    # 1. Establish the isolated user paths
+    # 1. Establish the clean user scope directory structures
     $UserWingetPath = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet"
     if (-not (Test-Path $UserWingetPath)) { 
         New-Item -ItemType Directory -Path $UserWingetPath -Force | Out-Null 
     }
 
-    # 2. Use a direct release package URL rather than a changing redirect pointer
-    $DownloadUrl = "https://github.com"
+    # 2. Direct locked download URL to the raw Microsoft WinGet client package module
+    $DownloadUrl = "https://powershellgallery.com"
     
     try {
-        $TempZip = Join-Path $env:TEMP "winget_stable.zip"
-        
-        # Download the precise binary package to disk explicitly
+        $TempZip = Join-Path $env:TEMP "winget_gallery.zip"
+        $ExtractPath = Join-Path $env:TEMP "winget_gallery_extracted"
+        if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue }
+
+        # Fetch the flat distribution package safely using standard WebClient
         $WebClient = New-Object System.Net.WebClient
         $WebClient.DownloadFile($DownloadUrl, $TempZip)
 
-        # 3. Process extraction inside isolated memory containers
-        $ExtractPath = Join-Path $env:TEMP "winget_extracted"
-        if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue }
-        
+        # Unpack the structural container 
         [System.IO.Compression.ZipFile]::ExtractToDirectory($TempZip, $ExtractPath)
         
-        # Pull the x64 payload module explicitly 
-        $ChildMsix = Get-ChildItem -Path $ExtractPath -Filter "*x64.msix" | Select-Object -First 1
-        
-        if ($ChildMsix) {
-            [System.IO.Compression.ZipFile]::ExtractToDirectory($ChildMsix.FullName, $UserWingetPath)
+        # 3. Locate the isolated x64 architecture binaries inside the delivery payload
+        $BinSource = Join-Path $ExtractPath "bin"
+        if (Test-Path $BinSource) {
+            # Copy only the raw executable assets directly into your user local folder
+            Copy-Item -Path "$BinSource\*" -Destination $UserWingetPath -Recurse -Force
         } else {
-            throw "Target x64 architecture installer component was missing inside the bundle."
+            throw "Could not locate the binary payload directory inside the downloaded client module."
         }
         
-        # 4. Bind the bin paths into the user landscape environment
+        # 4. Safely apply the user execution landscape paths
         if ($env:PATH -notlike "*$UserWingetPath*") {
             $CurrentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
             [Environment]::SetEnvironmentVariable("PATH", "$CurrentPath;$UserWingetPath", "User")
             $env:PATH = "$env:PATH;$UserWingetPath"
         }
 
-        # 5. Clear intermediate files safely
+        # 5. Clean up structural temp elements
         Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
         Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
         
         Write-Host "WinGet successfully initialized in user scope without prompts." -ForegroundColor Green
     }
     catch {
-        Write-Error "WinGet build execution failed: $_"
-        # Hard break terminates the pipeline immediately, denying PackageManagement the ability to hook into the session
-        exit 1
+        # Safe warning output instead of 'exit' ensures your console window stays open so you can see errors
+        Write-Warning "WinGet installation stopped: $_"
     }
 }
 
