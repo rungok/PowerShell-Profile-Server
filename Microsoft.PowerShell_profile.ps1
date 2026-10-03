@@ -1,5 +1,5 @@
 #>-------------------------------------------------------------------------------------------------
-$tit = 'Pimped PowerShell-Profile for Windows v3.3 by GOKS0R'
+$tit = 'Pimped PowerShell-Profile for Windows v4.0 by GOKS0R'
 $githubUser = 'rungok'
 $FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path
 $FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\harley7.png' # logopath
@@ -75,12 +75,11 @@ function Test-CommandExists {
     return $exists
 }
 
-############################################################################
-####### Test components status and install if they are not present #########
-############################################################################
+############################################################################################################
+## Power User registry settings to remove Windows 11 GUI suckiness (runs only in kernel 22000 and above) ###
+############################################################################################################
 
-#### Power User registry settings to remove Windows 11 GUI suckiness (if script started in that kernel version or higher of course)
-#
+#### (Section will only run if script started in kernel version 2200 or higher of course ####
 If (([Environment]::OSVersion).Version.Build -ge 22000) {
 	[bool] $is2025 = $true
 	
@@ -126,16 +125,73 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 	}
 }
 
+##################################################################################
+### Test for and install packageprovider + some apps (preferably in user mode) ###
+##################################################################################
+
 # DETECTION + User install: NuGet provider to ensure the other packages can be installed.
-$nugetProvider = Get-PackageProvider | Select-Object Name | Where-Object Name -match NuGet
-if (-not $nugetProvider) {
-    Write-Host "NuGet provider not found. Installing..." -f Cyan
-    Install-PackageProvider -Name NuGet -Force -Scope CurrentUser
-    Import-PackageProvider -Name NuGet -Force
-    Write-Host "NuGet provider installed."
-} else {
-    Write-Detect "NuGet provider"
+if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+    
+    $ProgressPreference = 'SilentlyContinue'
+    
+    # 1. Define a user-scoped destination folder
+    $UserWingetPath = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet"
+    if (-not (Test-Path $UserWingetPath)) { 
+        New-Item -ItemType Directory -Path $UserWingetPath -Force | Out-Null 
+    }
+
+    # 2. Query GitHub API for the latest release asset and download the MSIX bundle
+    $Repo = "microsoft/winget-cli"
+    $ReleasesUri = "https://github.com"
+    
+    try {
+        $Response = Invoke-RestMethod -Uri $ReleasesUri -UseBasicParsing
+        $Asset = $Response.assets | Where-Object { $_.name -like "*DesktopAppInstaller*.msixbundle" } | Select-Object -First 1
+        
+        $TempZip = Join-Path $env:TEMP "winget.zip"
+        
+        # Download the bundle asset
+        Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $TempZip -UseBasicParsing
+
+        # 3. Unpack the architecture-specific client directly into the user folder
+        # MSIX bundles are essentially specialized zip files
+        $ExtractPath = Join-Path $env:TEMP "winget_extracted"
+        Expand-Archive -Path $TempZip -DestinationPath $ExtractPath -Force
+        
+        # Locate the x64 standalone msix inside the bundle container
+        $ChildMsix = Get-ChildItem -Path $ExtractPath -Filter "*x64.msix" | Select-Object -First 1
+        Expand-Archive -Path $ChildMsix.FullName -DestinationPath $UserWingetPath -Force
+        
+        # 4. Inject the user-scope PATH so the profile and future sessions can call 'winget'
+        if ($env:PATH -notlike "*$UserWingetPath*") {
+            $CurrentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+            [Environment]::SetEnvironmentVariable("PATH", "$CurrentPath;$UserWingetPath", "User")
+            $env:PATH = "$env:PATH;$UserWingetPath"
+        }
+
+        # 5. Cleanup temporary setup structures
+        Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
+        Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
+        
+        Write-Host "WinGet successfully initialized in user scope." -ForegroundColor Green
+    }
+    catch {
+        Write-Warning "Failed to initialize WinGet automatically: $_"
+    }
 }
+
+############# Old Nuget install in admin mode
+#$nugetProvider = Get-PackageProvider | Select-Object Name | Where-Object Name -match NuGet
+#if (-not $nugetProvider) {
+#    Write-Host "NuGet provider not found. Installing..." -f Cyan
+#    Install-PackageProvider -Name NuGet -Force -Scope CurrentUser
+#	Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery
+#	Install-Script -Name winget-install -Force
+#   winget-install
+#    Write-Host "NuGet provider installed."
+#} else {
+#    Write-Detect "NuGet provider"
+#}
 
 # DETECTION + User config: Trust the PSGallery repository if it's not trusted
 If ((Get-PSRepository  | Select-Object Name,InstallationPolicy | Where-Object Name -match PSGallery | Select-Object -Expandproperty InstallationPolicy) -ne "Trusted") {
@@ -171,7 +227,7 @@ if (-not (Test-CommandExists choco)) {
 			iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 			} catch {
 			Write-Host ("Something is blocking downloads of ps1-files from the net, trying winget method..:") -nonewline -f Red
-			winget install --id chocolatey.chocolatey --source winget
+			winget install --id chocolatey.chocolatey $WingetSilentArgs
 			$env:Path +=  ";$env:allusersprofile\chocolatey\bin"
 			$env:ChocolateyInstall = $env:allusersprofile + "\chocolatey"
 		}	
@@ -183,6 +239,9 @@ if (-not (Test-CommandExists choco)) {
 		$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1";if (Test-Path($ChocolateyProfile)) { Import-Module "$ChocolateyProfile" }
 }
 
+# Define standard parameters for non-interactive automation scripts (Usage Example: winget install "Git.Git" $WingetSilentArgs)
+$WingetSilentArgs = "--silent --disable-interactivity --accept-package-agreements --accept-source-agreements --scope user"
+
 # DETECTION + Admin install: zoxide fuzzy shell (if not installed and shell is started in administrative mode)
 if (Test-CommandExists zoxide) {
 	Write-Detect "Zoxide"
@@ -193,7 +252,7 @@ if (Test-CommandExists zoxide) {
 	if ($isAdmin) {
 		Write-Host "❌ Zoxide command not found. Attempting to install via WinGet..." -nonewline -f Cyan
 		try {
-			winget install zoxide
+			winget install zoxide $WingetSilentArgs
 			Write-Host "Zoxide installed successfully from WinGet. Initializing..." -ForegroundColor DarkGreen
 			Invoke-Expression (& { (zoxide init powershell | Out-String) })
 		} catch {
@@ -214,7 +273,7 @@ if (Test-CommandExists $np) {
 	if ($isAdmin) {
 		Write-Host "❌ Notepad++ not installed. Attempting to install via " -nonewline -f Cyan
 		try {
-			winget install notepad++
+			winget install notepad++ $WingetSilentArgs
 		} catch {
 			Write-Error "❌ Failed to install Notepad++. Error: $_"
 			Write-Host "Trying choko instead..." -f Cyan
@@ -231,7 +290,7 @@ if (Test-CommandExists bginfo) {
 	if ($isAdmin) {
 		Write-Host "❌ BGInfo not installed. Attempting to install via" -nonewline -f Cyan
 		try {
-			winget install -e --id Microsoft.Sysinternals.BGInfo --disable-interactivity
+			winget install -e --id Microsoft.Sysinternals.BGInfo $WingetSilentArgs
 			# Launch with just bginfo64.exe or silent: bginfo /timer:0 /silent /nolicprompt
 		} catch {
 			Write-Error "❌ Failed to install BGInfo. Error: $_"
@@ -249,7 +308,7 @@ if (Test-CommandExists Magick) {
 	if ($isAdmin) {
 		Write-Host "❌ ImageMagick not installed. Attempting to install via " -nonewline -f Cyan
 		try {
-			winget install imagemagick.Q16-HDRI
+			winget install imagemagick.Q16-HDRI $WingetSilentArgs
 		} catch {
 			Write-Error "❌ Failed to install ImageMagick. Error: $_"
 			Write-Host "Trying choko instead..." -f Cyan
@@ -266,12 +325,12 @@ if (Test-CommandExists fastfetch) {
 	if ($isAdmin) {
 		Write-Host "❌ FastFetch not installed. Attempting to install via " -nonewline -f Cyan
 		try {
-			winget install fastfetch
+			winget install fastfetch $WingetSilentArgs
 			Write-Host "FastFetch installed successfully. Initializing..." -ForegroundColor DarkGreen
-   			refreshenv
 		} catch {
 			Write-Error "❌ Failed to install FastFetch. Error: $_";Write-Host "Trying choco instead..." -f Cyan
 			choco install fastfetch -y
+			refreshenv
 		}
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install FastFetch.") -f Cyan }
 }
@@ -284,7 +343,7 @@ If (Test-CommandExists fontget) {
 } else {
 	try {
  	Write-Host "❌ FontGet not installed. Attempting to install" -nonewline -f Cyan
- 	winget install -e --id Graphixa.FontGet
+ 	winget install -e --id Graphixa.FontGet $WingetSilentArgs
 	} catch { 
 		Write-Error "❌ Failed to install FontGet. Error: $_";Write-Host "Trying choko instead..." -f Cyan
 		choco install nerd-fonts-robotomono -y
@@ -490,11 +549,6 @@ function ff($name) {
 # Network Utilities
 function Get-PubIP { (Invoke-WebRequest http://ifconfig.me/ip).Content }
 
-# Open WinUtil
-function winutil {
-	iwr -useb https://christitus.com/win | iex
-}
-
 # System Utilities
 function admin {
     if ($args.Count -gt 0) {
@@ -524,31 +578,6 @@ function unzip ($file) {
     Write-Output("Extracting", $file, "to", $pwd)
     $fullFile = Get-ChildItem -Path $pwd -Filter $file | ForEach-Object { $_.FullName }
     Expand-Archive -Path $fullFile -DestinationPath $pwd
-}
-function hb {
-    if ($args.Length -eq 0) {
-        Write-Error "No file path specified."
-        return
-    }
-    
-    $FilePath = $args[0]
-    
-    if (Test-Path $FilePath) {
-        $Content = Get-Content $FilePath -Raw
-    } else {
-        Write-Error "File path does not exist."
-        return
-    }
-    
-    $uri = "http://bin.christitus.com/documents"
-    try {
-        $response = Invoke-RestMethod -Uri $uri -Method Post -Body $Content -ErrorAction Stop
-        $hasteKey = $response.key
-        $url = "http://bin.christitus.com/$hasteKey"
-        Write-Output $url
-    } catch {
-        Write-Error "Failed to upload the document. Error: $_"
-    }
 }
 
 function grep($regex, $dir) {
@@ -860,6 +889,9 @@ Use 'Show-Help' to display this help message.
 #############################################################################################################################################################
 #
 #	Changes last few versions
+#
+#	Version 4.0
+# 	- Revamped entire script with winget install of apps in user mode as primary (falls back to Chocolatey in admin mode if it doesn't work)
 #
 #	Version 3.1
 #	- Reconstructed example theme to a Joker and Harlequin Theme, where JokerSmoking.png is suppose to be config'ed as background pic in terminal.
