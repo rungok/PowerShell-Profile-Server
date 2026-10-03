@@ -129,29 +129,29 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 ### Test for and install packageprovider + some apps (preferably in user mode) ###
 ##################################################################################
 
+function Resolve-Winget {
+    $cmd = Get-Command winget -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+
+    $pkg = Get-AppxPackage -Name Microsoft.DesktopAppInstaller -ErrorAction SilentlyContinue |
+           Sort-Object Version -Descending | Select-Object -First 1
+    if ($pkg) {
+        $exe = Join-Path $pkg.InstallLocation 'winget.exe'
+        if (Test-Path $exe) {
+            Set-Alias -Name winget -Value $exe -Scope Global   # makes plain `winget` work this session
+            return $exe
+        }
+    }
+    return $null
+}
+
 function Ensure-Winget {
     [CmdletBinding()]
     param()
 
     # Windows PowerShell 5.1 only (Add-AppxPackage is not native in PS 7)
     if ($PSVersionTable.PSEdition -ne 'Desktop') { Write-Warning 'Requires Windows PowerShell 5.1'; return $false }
-
-    # 1. Already available?
-    if (Get-Command winget -ErrorAction SilentlyContinue) { return $true }
-
-    # Alias may exist but not be on PATH yet
-    $alias = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\winget.exe'
-    if (Test-Path $alias) {
-        $env:Path += ";$(Split-Path $alias)"
-        if (Get-Command winget -ErrorAction SilentlyContinue) { return $true }
-    }
-
-    # 2. Already installed for this user, just not working in this session?
-    if (Get-AppxPackage -Name Microsoft.DesktopAppInstaller -ErrorAction SilentlyContinue) {
-        $env:Path = [Environment]::GetEnvironmentVariable('Path','User') + ';' +
-                    [Environment]::GetEnvironmentVariable('Path','Machine')
-        if (Get-Command winget -ErrorAction SilentlyContinue) { return $true }
-    }
+	if (Resolve-Winget) { return $true }
 
     # 3. Install prerequisites + App Installer for the current user
     $oldPref = $ProgressPreference
@@ -188,17 +188,15 @@ function Ensure-Winget {
     }
 
     # 4. Refresh PATH for the current session and re-check
-    $env:Path = [Environment]::GetEnvironmentVariable('Path','User') + ';' +
-                [Environment]::GetEnvironmentVariable('Path','Machine') + ';' +
-                (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps')
-
-    return [bool](Get-Command winget -ErrorAction SilentlyContinue)
+    for ($i = 0; $i -lt 15; $i++) {
+        if (Resolve-Winget) { return $true }
+        Start-Sleep -Seconds 2
+    }
+    return $false
 }
 
-Ensure-Winget
-
-if (-not (Ensure-Winget)) {
-    Write-Warning 'winget is not available; skipping app installs.'
+if (Ensure-Winget) { Write-Detect WinGet } else { 
+	Write-Warning 'winget is not available; skipping app installs.'
     return
 }
 
