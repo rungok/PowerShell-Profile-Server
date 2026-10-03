@@ -1,5 +1,5 @@
-#####################################################################################################
-$tit = 'Pimped PowerShell-Profile for Windows v3.2 by GOKS0R'
+#>-------------------------------------------------------------------------------------------------
+$tit = 'Pimped PowerShell-Profile for Windows v3.3 by GOKS0R'
 $githubUser = 'rungok'
 $FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path
 $FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\harley7.png' # logopath
@@ -29,7 +29,7 @@ $FFlogoHeight = 35 # Height in number of chars
 #  2. Set font rendering to ClearType for icon rendering
 #
 #  Picture logo will be converted to raw sixel format to work in Windows Terminal v1.22+
-#####################################################################################################
+#\_________________________________________________________________________________________________
 
 Write-Host("`n .--------< ") -f white -nonewline
 Write-Host($tit) -f Cyan -nonewline
@@ -120,7 +120,7 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 	
 	if ($isAdmin) {
 		# Settings > Personalization > Taskbar > Widgets > Off
-		Set-RegDefault -Path 'HKLM\Software\Policies\Microsoft\Dsh' -Name 'AllowNewsAndInterests' -Value 0
+		# Set-RegDefault -Path 'HKLM\Software\Policies\Microsoft\Dsh' -Name 'AllowNewsAndInterests' -Value 0
 		# Long paths in file explorer
 		Set-RegDefault -Path 'HKLM\SYSTEM\CurrentControlSet\Control\FileSystem' -Name 'LongPathsEnabled' -Value 1
 	}
@@ -225,13 +225,13 @@ if (Test-CommandExists $np) {
 }
 
 # DETECTION + Admin install: BGInfo (if not installed and shell is started in administrative mode)
-if (Test-CommandExists bginfo64) {
-	Write-Detect "BGInfo64"
+if (Test-CommandExists bginfo) {
+	Write-Detect "BGInfo"
 } else {
 	if ($isAdmin) {
 		Write-Host "❌ BGInfo not installed. Attempting to install via" -nonewline -f Cyan
 		try {
-			winget install -e --id Microsoft.Sysinternals.BGInfo winget --disable-interactivity
+			winget install -e --id Microsoft.Sysinternals.BGInfo --disable-interactivity
 			# Launch with just bginfo64.exe or silent: bginfo /timer:0 /silent /nolicprompt
 		} catch {
 			Write-Error "❌ Failed to install BGInfo. Error: $_"
@@ -266,27 +266,40 @@ if (Test-CommandExists fastfetch) {
 	if ($isAdmin) {
 		Write-Host "❌ FastFetch not installed. Attempting to install via " -nonewline -f Cyan
 		try {
-			choco install fastfetch -y
+			winget install fastfetch
 			Write-Host "FastFetch installed successfully. Initializing..." -ForegroundColor DarkGreen
    			refreshenv
 		} catch {
-			Write-Error "❌ Failed to install FastFetch. Error: $_";Write-Host "Trying winget instead..." -f Cyan
-			winget install fastfetch
+			Write-Error "❌ Failed to install FastFetch. Error: $_";Write-Host "Trying choco instead..." -f Cyan
+			choco install fastfetch -y
 		}
 	} else { Write-Host ("❌ Powershell must be started in elevated mode to install FastFetch.") -f Cyan }
 }
 
-# DETECTION + User install: RobotoMono Nerd Font (if not installed)
-$RoboInstalled = [bool](fontget list "roboto-mono" 2>$null)
+
+# DETECTION + User install: Fontget + RobotoMono Nerd Font
+If (Test-CommandExists fontget) {
+	Write-Detect "FontGet"
+	$RoboInstalled = [bool](fontget list "roboto-mono" 2>$null)
+} else {
+	try {
+ 	Write-Host "❌ FontGet not installed. Attempting to install" -nonewline -f Cyan
+ 	winget install -e --id Graphixa.FontGet
+	} catch { 
+		Write-Error "❌ Failed to install FontGet. Error: $_";Write-Host "Trying choko instead..." -f Cyan
+		choco install nerd-fonts-robotomono -y
+	}
+	$RoboInstalled = [bool](fontget list "roboto-mono" 2>$null)
+}	
+	
 If ($RoboInstalled) {
 	Write-Detect "RobotoMono Nerd Font"
 } else {
 	try {
  	Write-Host "❌ RobotoMono nerd font not installed. Attempting to install" -nonewline -f Cyan
- 	winget install -e --id Graphixa.FontGet
 	fontget add nerd.roboto-mono --accept-agreements --accept-defaults
 	} catch { 
-		Write-Error "❌ Failed to install FastFetch. Error: $_";Write-Host "Trying choko instead..." -f Cyan
+		Write-Error "❌ Failed to install RobotoMono nerd font. Error: $_";Write-Host "Trying choko instead..." -f Cyan
 		choco install nerd-fonts-robotomono -y
 	}
 }
