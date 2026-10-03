@@ -135,19 +135,9 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     $ProgressPreference = 'SilentlyContinue'
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     
-    # 1. Silently drop the exact NuGet DLL into the User Scope directory to satisfy PackageManagement
-    $UserProviderPath = Join-Path $env:LOCALAPPDATA "PackageManagement\ProviderAssemblies"
-    $NugetDllPath = Join-Path $UserProviderPath "Microsoft.PackageManagement.NuGetProvider-2.8.5.208.dll"
-
-    if (-not (Test-Path $NugetDllPath)) {
-        if (-not (Test-Path $UserProviderPath)) { 
-            New-Item -ItemType Directory -Path $UserProviderPath -Force | Out-Null 
-        }
-        try {
-            $NugetDownloadUrl = "https://cdn.oneget.org/providers/Microsoft.PackageManagement.NuGetProvider-2.8.5.208.dll"
-            Invoke-WebRequest -Uri $NugetDownloadUrl -OutFile $NugetDllPath -UseBasicParsing
-        } catch {}
-    }
+    # 1. Safely load the .NET Compression assembly
+    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
 
     # 2. Define user-scoped destination folder for WinGet binary files
     $UserWingetPath = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet"
@@ -162,13 +152,19 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
         $TempZip = Join-Path $env:TEMP "winget.zip"
         Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempZip -UseBasicParsing
 
-        # 4. Unpack the structural contents directly into the user folder
+        # 4. Unpack using native .NET ZipFile to prevent PackageManagement from intercepting
         $ExtractPath = Join-Path $env:TEMP "winget_extracted"
-        Expand-Archive -Path $TempZip -DestinationPath $ExtractPath -Force
+        if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue }
         
-        # Locate the x64 standalone msix inside the bundle container
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($TempZip, $ExtractPath)
+        
+        # Locate the inner x64 standalone msix inside the container
         $ChildMsix = Get-ChildItem -Path $ExtractPath -Filter "*x64.msix" | Select-Object -First 1
-        Expand-Archive -Path $ChildMsix.FullName -DestinationPath $UserWingetPath -Force
+        
+        # Unpack the secondary layer via .NET as well
+        if ($ChildMsix) {
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($ChildMsix.FullName, $UserWingetPath)
+        }
         
         # 5. Inject the user-scope environment PATH safely
         if ($env:PATH -notlike "*$UserWingetPath*") {
@@ -184,7 +180,7 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
         Write-Host "WinGet successfully initialized in user scope without prompts." -ForegroundColor Green
     }
     catch {
-        Write-Warning "Failed to install WinGet files: $_"
+        Write-Warning "Failed to install WinGet files safely: $_"
     }
 }
 
