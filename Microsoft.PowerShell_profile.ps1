@@ -130,31 +130,47 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 ##################################################################################
 
 # DETECTION + User install: NuGet provider to ensure the other packages can be installed.
+# Ensure script runs silently and doesn't loop on future profile loads
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     
     $ProgressPreference = 'SilentlyContinue'
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+    # 1. Silently bootstrap NuGet in User Scope to prevent the interactive prompt
+    try {
+        $ForceBootstrap = Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue
+        if (-not $ForceBootstrap) {
+            # Installs NuGet directly to user scope without asking questions
+            Install-PackageProvider -Name NuGet -Scope CurrentUser -Force | Out-Null
+        }
+    } catch {}
     
-    # 1. Define a user-scoped destination folder
+    # 2. Define a user-scoped destination folder
     $UserWingetPath = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet"
     if (-not (Test-Path $UserWingetPath)) { 
         New-Item -ItemType Directory -Path $UserWingetPath -Force | Out-Null 
     }
 
-    # 2. Query GitHub API for the latest release asset and download the MSIX bundle
+    # 3. Query GitHub API for the latest release asset and download the MSIX bundle
     $Repo = "microsoft/winget-cli"
     $ReleasesUri = "https://github.com"
     
     try {
         $Response = Invoke-RestMethod -Uri $ReleasesUri -UseBasicParsing
-        $Asset = $Response.assets | Where-Object { $_.name -like "*DesktopAppInstaller*.msixbundle" } | Select-Object -First 1
         
+        # Robust filtering to catch the actual msixbundle file from official assets
+        $Asset = $Response.assets | Where-Object { $_.name -like "*DesktopAppInstaller*.msixbundle" -or $_.name -like "*.msixbundle" } | Select-Object -First 1
+        
+        if ($null -eq $Asset -or $null -eq $Asset.browser_download_url) {
+            throw "Could not resolve WinGet release asset URL from GitHub API."
+        }
+
         $TempZip = Join-Path $env:TEMP "winget.zip"
         
         # Download the bundle asset
         Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $TempZip -UseBasicParsing
 
-        # 3. Unpack the architecture-specific client directly into the user folder
-        # MSIX bundles are essentially specialized zip files
+        # 4. Unpack the architecture-specific client directly into the user folder
         $ExtractPath = Join-Path $env:TEMP "winget_extracted"
         Expand-Archive -Path $TempZip -DestinationPath $ExtractPath -Force
         
@@ -162,18 +178,18 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
         $ChildMsix = Get-ChildItem -Path $ExtractPath -Filter "*x64.msix" | Select-Object -First 1
         Expand-Archive -Path $ChildMsix.FullName -DestinationPath $UserWingetPath -Force
         
-        # 4. Inject the user-scope PATH so the profile and future sessions can call 'winget'
+        # 5. Inject the user-scope PATH so the profile and future sessions can call 'winget'
         if ($env:PATH -notlike "*$UserWingetPath*") {
             $CurrentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
             [Environment]::SetEnvironmentVariable("PATH", "$CurrentPath;$UserWingetPath", "User")
             $env:PATH = "$env:PATH;$UserWingetPath"
         }
 
-        # 5. Cleanup temporary setup structures
+        # 6. Cleanup temporary setup structures
         Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
         Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
         
-        Write-Host "WinGet successfully initialized in user scope." -ForegroundColor Green
+        Write-Host "WinGet successfully initialized in user scope without prompts." -ForegroundColor Green
     }
     catch {
         Write-Warning "Failed to initialize WinGet automatically: $_"
