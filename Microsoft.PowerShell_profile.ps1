@@ -129,6 +129,13 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 ### Test for and install packageprovider + some apps (preferably in user mode) ###
 ##################################################################################
 
+# Set TLS v1.2 as default https protocol
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+# Define standard parameters for non-interactive automation scripts (Usage Example: winget install "Git.Git" $WingetSilentArgs)
+$WingetSilentArgs = @('--exact','--silent','--disable-interactivity','--accept-package-agreements','--accept-source-agreements','--scope','user')
+$WingetSilentArgsAdmin = @('--exact','--silent','--disable-interactivity','--accept-package-agreements','--accept-source-agreements','--scope','machine')
+
+
 function Resolve-Winget {
     $cmd = Get-Command winget -ErrorAction SilentlyContinue
     if ($cmd) { return $cmd.Source }
@@ -196,27 +203,18 @@ function Ensure-Winget {
     return $false
 }
 
-if (Ensure-Winget) { Write-Detect WinGet } else { 
-	Write-Warning 'winget is not available; skipping app installs.'
-    return
-}
-
-############# Old Nuget install in admin mode
-#$nugetProvider = Get-PackageProvider | Select-Object Name | Where-Object Name -match NuGet
-#if (-not $nugetProvider) {
-#    Write-Host "NuGet provider not found. Installing..." -f Cyan
-#    Install-PackageProvider -Name NuGet -Force -Scope CurrentUser
-#	Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery
-#	Install-Script -Name winget-install -Force
-#   winget-install
-#    Write-Host "NuGet provider installed."
-#} else {
-#    Write-Detect "NuGet provider"
-#}
+if (Ensure-Winget) { Write-Detect WinGet } else { Write-Warning 'winget is not available; skipping app installs.' }
 
 # DETECTION + User config: Trust the PSGallery repository if it's not trusted
-If ((Get-PSRepository  | Select-Object Name,InstallationPolicy | Where-Object Name -match PSGallery | Select-Object -Expandproperty InstallationPolicy) -ne "Trusted") {
-	Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted }
+if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue |
+          Where-Object { $_.Version -ge [version]'2.8.5.201' })) {
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
+}
+Import-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
+
+if ((Get-PSRepository -Name PSGallery).InstallationPolicy -ne 'Trusted') {
+    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+}
 
 # DETECTION + User install: Terminal-Icons module
 if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) { Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck }
@@ -260,9 +258,6 @@ if (-not (Test-CommandExists choco)) {
 		$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1";if (Test-Path($ChocolateyProfile)) { Import-Module "$ChocolateyProfile" }
 }
 
-# Define standard parameters for non-interactive automation scripts (Usage Example: winget install "Git.Git" $WingetSilentArgs)
-$WingetSilentArgs = "--silent --disable-interactivity --accept-package-agreements --accept-source-agreements --scope user"
-
 # DETECTION + Admin install: zoxide fuzzy shell (if not installed and shell is started in administrative mode)
 if (Test-CommandExists zoxide) {
 	Write-Detect "Zoxide"
@@ -270,20 +265,18 @@ if (Test-CommandExists zoxide) {
 	Set-Alias -Name z -Value __zoxide_z -Option AllScope -Scope Global -Force
 	Set-Alias -Name zi -Value __zoxide_zi -Option AllScope -Scope Global -Force
 } else {
-	if ($isAdmin) {
-		Write-Host "❌ Zoxide command not found. Attempting to install via WinGet..." -nonewline -f Cyan
-		try {
-			winget install zoxide $WingetSilentArgs
-			Write-Host "Zoxide installed successfully from WinGet. Initializing..." -ForegroundColor DarkGreen
-			Invoke-Expression (& { (zoxide init powershell | Out-String) })
-		} catch {
-			Write-Error "❌ Failed to install zoxide. Error: $_"
-			Write-Host "Trying choco instead..." -f Cyan
-			choco install zoxide -y
-			Write-Host "Zoxide installed successfully from ChocoLatey. Initializing..." -ForegroundColor DarkGreen
-			Invoke-Expression (& { (zoxide init powershell | Out-String) })
-		}
-	} else { Write-Host ("❌ Terminal must be started in elevated mode to install Zoxide. Fuzzy shell will not be activated until this is done.") -f Cyan }
+	Write-Host "❌ Zoxide command not found. Attempting to install via WinGet..." -nonewline -f Cyan
+	try {
+		winget install --id ajeetdsouza.zoxide @WingetSilentArgs
+		Write-Host "Zoxide installed successfully from WinGet. Initializing..." -ForegroundColor DarkGreen
+		Invoke-Expression (& { (zoxide init powershell | Out-String) })
+	} catch {
+		Write-Error "❌ Failed to install zoxide. Error: $_"
+		Write-Host "Trying choco instead..." -f Cyan
+		choco install zoxide -y
+		Write-Host "Zoxide installed successfully from ChocoLatey. Initializing..." -ForegroundColor DarkGreen
+		Invoke-Expression (& { (zoxide init powershell | Out-String) })
+	}
 }
 
 # DETECTION + Admin install: Notepad++ (if not installed and shell is started in administrative mode)
@@ -294,7 +287,7 @@ if (Test-CommandExists $np) {
 	if ($isAdmin) {
 		Write-Host "❌ Notepad++ not installed. Attempting to install via " -nonewline -f Cyan
 		try {
-			winget install notepad++ $WingetSilentArgs
+			winget install --id Notepad++.Notepad++ $WingetSilentArgs
 		} catch {
 			Write-Error "❌ Failed to install Notepad++. Error: $_"
 			Write-Host "Trying choko instead..." -f Cyan
@@ -311,7 +304,7 @@ if (Test-CommandExists bginfo) {
 	if ($isAdmin) {
 		Write-Host "❌ BGInfo not installed. Attempting to install via" -nonewline -f Cyan
 		try {
-			winget install -e --id Microsoft.Sysinternals.BGInfo $WingetSilentArgs
+			winget install --id Microsoft.Sysinternals.BGInfo $WingetSilentArgs
 			# Launch with just bginfo64.exe or silent: bginfo /timer:0 /silent /nolicprompt
 		} catch {
 			Write-Error "❌ Failed to install BGInfo. Error: $_"
@@ -329,7 +322,7 @@ if (Test-CommandExists Magick) {
 	if ($isAdmin) {
 		Write-Host "❌ ImageMagick not installed. Attempting to install via " -nonewline -f Cyan
 		try {
-			winget install imagemagick.Q16-HDRI $WingetSilentArgs
+			winget install --id ImageMagick.Q16-HDRI $WingetSilentArgs
 		} catch {
 			Write-Error "❌ Failed to install ImageMagick. Error: $_"
 			Write-Host "Trying choko instead..." -f Cyan
@@ -346,7 +339,7 @@ if (Test-CommandExists fastfetch) {
 	if ($isAdmin) {
 		Write-Host "❌ FastFetch not installed. Attempting to install via " -nonewline -f Cyan
 		try {
-			winget install fastfetch $WingetSilentArgs
+			winget install --id Fastfetch-cli.Fastfetch $WingetSilentArgs
 			Write-Host "FastFetch installed successfully. Initializing..." -ForegroundColor DarkGreen
 		} catch {
 			Write-Error "❌ Failed to install FastFetch. Error: $_";Write-Host "Trying choco instead..." -f Cyan
@@ -364,7 +357,7 @@ If (Test-CommandExists fontget) {
 } else {
 	try {
  	Write-Host "❌ FontGet not installed. Attempting to install" -nonewline -f Cyan
- 	winget install -e --id Graphixa.FontGet $WingetSilentArgs
+ 	winget install --id Graphixa.FontGet $WingetSilentArgs
 	} catch { 
 		Write-Error "❌ Failed to install FontGet. Error: $_";Write-Host "Trying choko instead..." -f Cyan
 		choco install nerd-fonts-robotomono -y
@@ -384,16 +377,20 @@ If ($RoboInstalled) {
 	}
 }
 
-#### DETECTION + Admin install: Powershell 7.x
+#### DETECTION + Admin OR User install: Powershell 7.x
 function Install-PowerShell {
-	if ($isAdmin) {
-		Write-Host "PowerShell v7.x is not installed. Starting the install..." -f Cyan
-		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;iex "& { $(irm https://aka.ms/install-powershell.ps1) } -UseMSI -Quiet"
-		# Start-Sleep -Seconds 8 # Wait for the update to finish
-		# Write-Host "Restarting the installation script with Powershell Core" -ForegroundColor DarkGreen
-		# Start-Process pwsh -ArgumentList "-NoExit", "-Command Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/$githubUser/powershell-profile-server/main/Microsoft.PowerShell_profile.ps1'-UseBasicParsing).Content"
-		# exit
-		} else { Write-Host ("❌ Shell must be started in elevated mode to update or install Powershell v7.x") -f Cyan }
+	If ($IsAdmin) {
+		Write-Warning "PowerShell v7.x is not installed. Installing with winget Machine scope..."
+		winget install --id Microsoft.PowerShell @WingetSilentArgsAdmin
+	} else {
+	    Write-Host "PowerShell v7.x is not installed. Installing to User profile..." -f Cyan
+	    try {
+	        iex "& { $(irm https://aka.ms/install-powershell.ps1) } -AddToPath -Quiet"
+	        # Make pwsh available in this session too
+	        $env:Path += ";$env:LOCALAPPDATA\Microsoft\powershell"
+	    }
+	    catch { Write-Warning "PowerShell 7 install failed: $($_.Exception.Message)" }
+	}
 }
 
 if (-not (Test-CommandExists pwsh)) {
