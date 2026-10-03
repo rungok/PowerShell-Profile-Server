@@ -129,62 +129,75 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 ### Test for and install packageprovider + some apps (preferably in user mode) ###
 ##################################################################################
 
-# Ensure script runs silently and doesn't loop on future profile loads
-if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-    
-    $ProgressPreference = 'SilentlyContinue'
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    
-    Add-Type -AssemblyName System.IO.Compression
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
+function Ensure-Winget {
+    [CmdletBinding()]
+    param()
 
-    # 1. Establish the clean user scope directory structures
-    $UserWingetPath = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet"
-    if (-not (Test-Path $UserWingetPath)) { 
-        New-Item -ItemType Directory -Path $UserWingetPath -Force | Out-Null 
+    # Windows PowerShell 5.1 only (Add-AppxPackage is not native in PS 7)
+    if ($PSVersionTable.PSEdition -ne 'Desktop') { Write-Warning 'Requires Windows PowerShell 5.1'; return $false }
+
+    # 1. Already available?
+    if (Get-Command winget -ErrorAction SilentlyContinue) { return $true }
+
+    # Alias may exist but not be on PATH yet
+    $alias = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\winget.exe'
+    if (Test-Path $alias) {
+        $env:Path += ";$(Split-Path $alias)"
+        if (Get-Command winget -ErrorAction SilentlyContinue) { return $true }
     }
 
-    # 2. Direct locked download URL to the raw Microsoft WinGet client package module
-    $DownloadUrl = "https://powershellgallery.com"
-    
+    # 2. Already installed for this user, just not working in this session?
+    if (Get-AppxPackage -Name Microsoft.DesktopAppInstaller -ErrorAction SilentlyContinue) {
+        $env:Path = [Environment]::GetEnvironmentVariable('Path','User') + ';' +
+                    [Environment]::GetEnvironmentVariable('Path','Machine')
+        if (Get-Command winget -ErrorAction SilentlyContinue) { return $true }
+    }
+
+    # 3. Install prerequisites + App Installer for the current user
+    $oldPref = $ProgressPreference
+    $ProgressPreference = 'SilentlyContinue'   # makes Invoke-WebRequest much faster
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+    $tmp = Join-Path $env:TEMP ('winget-bootstrap-' + [guid]::NewGuid())
+    New-Item $tmp -ItemType Directory -Force | Out-Null
+
     try {
-        $TempZip = Join-Path $env:TEMP "winget_gallery.zip"
-        $ExtractPath = Join-Path $env:TEMP "winget_gallery_extracted"
-        if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue }
+        $base = 'https://github.com/microsoft/winget-cli/releases/latest/download'
 
-        # Fetch the flat distribution package safely using standard WebClient
-        $WebClient = New-Object System.Net.WebClient
-        $WebClient.DownloadFile($DownloadUrl, $TempZip)
+        # Dependencies zip from the winget-cli release (VCLibs + UI.Xaml, matched to that release)
+        $depZip = Join-Path $tmp 'deps.zip'
+        Invoke-WebRequest "$base/DesktopAppInstaller_Dependencies.zip" -OutFile $depZip -UseBasicParsing
+        Expand-Archive $depZip -DestinationPath (Join-Path $tmp 'deps') -Force
 
-        # Unpack the structural container 
-        [System.IO.Compression.ZipFile]::ExtractToDirectory($TempZip, $ExtractPath)
-        
-        # 3. Locate the isolated x64 architecture binaries inside the delivery payload
-        $BinSource = Join-Path $ExtractPath "bin"
-        if (Test-Path $BinSource) {
-            # Copy only the raw executable assets directly into your user local folder
-            Copy-Item -Path "$BinSource\*" -Destination $UserWingetPath -Recurse -Force
-        } else {
-            throw "Could not locate the binary payload directory inside the downloaded client module."
-        }
-        
-        # 4. Safely apply the user execution landscape paths
-        if ($env:PATH -notlike "*$UserWingetPath*") {
-            $CurrentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
-            [Environment]::SetEnvironmentVariable("PATH", "$CurrentPath;$UserWingetPath", "User")
-            $env:PATH = "$env:PATH;$UserWingetPath"
-        }
+        $arch = if ([Environment]::Is64BitOperatingSystem) { 'x64' } else { 'x86' }
+        $deps = Get-ChildItem (Join-Path $tmp "deps\$arch") -Filter *.appx | Select-Object -ExpandProperty FullName
 
-        # 5. Clean up structural temp elements
-        Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
-        Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
-        
-        Write-Host "WinGet successfully initialized in user scope without prompts." -ForegroundColor Green
+        # App Installer bundle (contains winget)
+        $bundle = Join-Path $tmp 'winget.msixbundle'
+        Invoke-WebRequest "$base/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -OutFile $bundle -UseBasicParsing
+
+        Add-AppxPackage -Path $bundle -DependencyPath $deps -ErrorAction Stop
     }
     catch {
-        # Safe warning output instead of 'exit' ensures your console window stays open so you can see errors
-        Write-Warning "WinGet installation stopped: $_"
+        Write-Warning "winget bootstrap failed: $($_.Exception.Message)"
+        return $false
     }
+    finally {
+        $ProgressPreference = $oldPref
+        Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    # 4. Refresh PATH for the current session and re-check
+    $env:Path = [Environment]::GetEnvironmentVariable('Path','User') + ';' +
+                [Environment]::GetEnvironmentVariable('Path','Machine') + ';' +
+                (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps')
+
+    return [bool](Get-Command winget -ErrorAction SilentlyContinue)
+}
+
+if (-not (Ensure-Winget)) {
+    Write-Warning 'winget is not available; skipping app installs.'
+    return
 }
 
 ############# Old Nuget install in admin mode
