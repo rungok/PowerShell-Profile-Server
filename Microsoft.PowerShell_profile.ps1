@@ -149,49 +149,50 @@ function Ensure-Winget {
     [CmdletBinding()]
     param()
 
-    # Windows PowerShell 5.1 only (Add-AppxPackage is not native in PS 7)
-    if ($PSVersionTable.PSEdition -ne 'Desktop') { Write-Warning 'Requires Windows PowerShell 5.1'; return $false }
-	if (Resolve-Winget) { return $true }
+    Write-Host "[1] Edition: $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)"
+    if ($PSVersionTable.PSEdition -ne 'Desktop') { Write-Warning 'Not Windows PowerShell 5.1'; return $false }
 
-    # 3. Install prerequisites + App Installer for the current user
-    $oldPref = $ProgressPreference
-    $ProgressPreference = 'SilentlyContinue'   # makes Invoke-WebRequest much faster
+    $exe = Resolve-Winget
+    Write-Host "[2] Resolve-Winget (before install): '$exe'"
+    if ($exe) { return $true }
+
+    Write-Host "[3] Starting download..."
+    $ProgressPreference = 'Continue'    # show progress so you can see it working
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
     $tmp = Join-Path $env:TEMP ('winget-bootstrap-' + [guid]::NewGuid())
     New-Item $tmp -ItemType Directory -Force | Out-Null
-
     try {
         $base = 'https://github.com/microsoft/winget-cli/releases/latest/download'
-
-        # Dependencies zip from the winget-cli release (VCLibs + UI.Xaml, matched to that release)
         $depZip = Join-Path $tmp 'deps.zip'
         Invoke-WebRequest "$base/DesktopAppInstaller_Dependencies.zip" -OutFile $depZip -UseBasicParsing
+        Write-Host "[4] Dependencies downloaded: $((Get-Item $depZip).Length) bytes"
         Expand-Archive $depZip -DestinationPath (Join-Path $tmp 'deps') -Force
 
         $arch = if ([Environment]::Is64BitOperatingSystem) { 'x64' } else { 'x86' }
         $deps = Get-ChildItem (Join-Path $tmp "deps\$arch") -Filter *.appx | Select-Object -ExpandProperty FullName
+        Write-Host "[5] Dependency files: $($deps -join ', ')"
 
-        # App Installer bundle (contains winget)
         $bundle = Join-Path $tmp 'winget.msixbundle'
         Invoke-WebRequest "$base/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -OutFile $bundle -UseBasicParsing
+        Write-Host "[6] Bundle downloaded: $((Get-Item $bundle).Length) bytes"
 
         Add-AppxPackage -Path $bundle -DependencyPath $deps -ErrorAction Stop
+        Write-Host "[7] Add-AppxPackage finished"
     }
     catch {
-        Write-Warning "winget bootstrap failed: $($_.Exception.Message)"
+        Write-Warning "Bootstrap failed: $($_.Exception.Message)"
         return $false
     }
     finally {
-        $ProgressPreference = $oldPref
         Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
     }
 
-    # 4. Refresh PATH for the current session and re-check
     for ($i = 0; $i -lt 15; $i++) {
-        if (Resolve-Winget) { return $true }
+        if (Resolve-Winget) { Write-Host "[8] winget found"; return $true }
         Start-Sleep -Seconds 2
     }
+    Write-Warning "[8] winget not found after install"
     return $false
 }
 
