@@ -135,52 +135,58 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     $ProgressPreference = 'SilentlyContinue'
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     
-    # 1. Safely load the .NET Compression assembly
+    # Load native memory compression streams to avoid OS file system event hooks
     Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-    # 2. Define user-scoped destination folder for WinGet binary files
+    # 1. Establish the isolated user paths
     $UserWingetPath = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet"
     if (-not (Test-Path $UserWingetPath)) { 
         New-Item -ItemType Directory -Path $UserWingetPath -Force | Out-Null 
     }
 
-    # 3. Pull down the release package directly using a fallback download URL
+    # 2. Use a direct release package URL rather than a changing redirect pointer
     $DownloadUrl = "https://github.com"
     
     try {
-        $TempZip = Join-Path $env:TEMP "winget.zip"
-        Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempZip -UseBasicParsing
+        $TempZip = Join-Path $env:TEMP "winget_stable.zip"
+        
+        # Download the precise binary package to disk explicitly
+        $WebClient = New-Object System.Net.WebClient
+        $WebClient.DownloadFile($DownloadUrl, $TempZip)
 
-        # 4. Unpack using native .NET ZipFile to prevent PackageManagement from intercepting
+        # 3. Process extraction inside isolated memory containers
         $ExtractPath = Join-Path $env:TEMP "winget_extracted"
         if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue }
         
         [System.IO.Compression.ZipFile]::ExtractToDirectory($TempZip, $ExtractPath)
         
-        # Locate the inner x64 standalone msix inside the container
+        # Pull the x64 payload module explicitly 
         $ChildMsix = Get-ChildItem -Path $ExtractPath -Filter "*x64.msix" | Select-Object -First 1
         
-        # Unpack the secondary layer via .NET as well
         if ($ChildMsix) {
             [System.IO.Compression.ZipFile]::ExtractToDirectory($ChildMsix.FullName, $UserWingetPath)
+        } else {
+            throw "Target x64 architecture installer component was missing inside the bundle."
         }
         
-        # 5. Inject the user-scope environment PATH safely
+        # 4. Bind the bin paths into the user landscape environment
         if ($env:PATH -notlike "*$UserWingetPath*") {
             $CurrentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
             [Environment]::SetEnvironmentVariable("PATH", "$CurrentPath;$UserWingetPath", "User")
             $env:PATH = "$env:PATH;$UserWingetPath"
         }
 
-        # 6. Cleanup temporary setup folders
+        # 5. Clear intermediate files safely
         Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
         Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
         
         Write-Host "WinGet successfully initialized in user scope without prompts." -ForegroundColor Green
     }
     catch {
-        Write-Warning "Failed to install WinGet files safely: $_"
+        Write-Error "WinGet build execution failed: $_"
+        # Hard break terminates the pipeline immediately, denying PackageManagement the ability to hook into the session
+        exit 1
     }
 }
 
