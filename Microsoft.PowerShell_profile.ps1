@@ -129,48 +129,40 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 ### Test for and install packageprovider + some apps (preferably in user mode) ###
 ##################################################################################
 
-# DETECTION + User install: NuGet provider to ensure the other packages can be installed.
 # Ensure script runs silently and doesn't loop on future profile loads
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     
     $ProgressPreference = 'SilentlyContinue'
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-
-    # 1. Silently bootstrap NuGet in User Scope to prevent the interactive prompt
-    try {
-        $ForceBootstrap = Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue
-        if (-not $ForceBootstrap) {
-            # Installs NuGet directly to user scope without asking questions
-            Install-PackageProvider -Name NuGet -Scope CurrentUser -Force | Out-Null
-        }
-    } catch {}
     
-    # 2. Define a user-scoped destination folder
+    # 1. Silently drop the exact NuGet DLL into the User Scope directory to satisfy PackageManagement
+    $UserProviderPath = Join-Path $env:LOCALAPPDATA "PackageManagement\ProviderAssemblies"
+    $NugetDllPath = Join-Path $UserProviderPath "Microsoft.PackageManagement.NuGetProvider-2.8.5.208.dll"
+
+    if (-not (Test-Path $NugetDllPath)) {
+        if (-not (Test-Path $UserProviderPath)) { 
+            New-Item -ItemType Directory -Path $UserProviderPath -Force | Out-Null 
+        }
+        try {
+            $NugetDownloadUrl = "https://cdn.oneget.org/providers/Microsoft.PackageManagement.NuGetProvider-2.8.5.208.dll"
+            Invoke-WebRequest -Uri $NugetDownloadUrl -OutFile $NugetDllPath -UseBasicParsing
+        } catch {}
+    }
+
+    # 2. Define user-scoped destination folder for WinGet binary files
     $UserWingetPath = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet"
     if (-not (Test-Path $UserWingetPath)) { 
         New-Item -ItemType Directory -Path $UserWingetPath -Force | Out-Null 
     }
 
-    # 3. Query GitHub API for the latest release asset and download the MSIX bundle
-    $Repo = "microsoft/winget-cli"
-    $ReleasesUri = "https://github.com"
+    # 3. Pull down the release package directly using a fallback download URL
+    $DownloadUrl = "https://github.com"
     
     try {
-        $Response = Invoke-RestMethod -Uri $ReleasesUri -UseBasicParsing
-        
-        # Robust filtering to catch the actual msixbundle file from official assets
-        $Asset = $Response.assets | Where-Object { $_.name -like "*DesktopAppInstaller*.msixbundle" -or $_.name -like "*.msixbundle" } | Select-Object -First 1
-        
-        if ($null -eq $Asset -or $null -eq $Asset.browser_download_url) {
-            throw "Could not resolve WinGet release asset URL from GitHub API."
-        }
-
         $TempZip = Join-Path $env:TEMP "winget.zip"
-        
-        # Download the bundle asset
-        Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $TempZip -UseBasicParsing
+        Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempZip -UseBasicParsing
 
-        # 4. Unpack the architecture-specific client directly into the user folder
+        # 4. Unpack the structural contents directly into the user folder
         $ExtractPath = Join-Path $env:TEMP "winget_extracted"
         Expand-Archive -Path $TempZip -DestinationPath $ExtractPath -Force
         
@@ -178,21 +170,21 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
         $ChildMsix = Get-ChildItem -Path $ExtractPath -Filter "*x64.msix" | Select-Object -First 1
         Expand-Archive -Path $ChildMsix.FullName -DestinationPath $UserWingetPath -Force
         
-        # 5. Inject the user-scope PATH so the profile and future sessions can call 'winget'
+        # 5. Inject the user-scope environment PATH safely
         if ($env:PATH -notlike "*$UserWingetPath*") {
             $CurrentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
             [Environment]::SetEnvironmentVariable("PATH", "$CurrentPath;$UserWingetPath", "User")
             $env:PATH = "$env:PATH;$UserWingetPath"
         }
 
-        # 6. Cleanup temporary setup structures
+        # 6. Cleanup temporary setup folders
         Remove-Item $TempZip -Force -ErrorAction SilentlyContinue
         Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
         
         Write-Host "WinGet successfully initialized in user scope without prompts." -ForegroundColor Green
     }
     catch {
-        Write-Warning "Failed to initialize WinGet automatically: $_"
+        Write-Warning "Failed to install WinGet files: $_"
     }
 }
 
