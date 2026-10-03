@@ -203,7 +203,8 @@ function Ensure-Winget {
     return $false
 }
 
-if (Ensure-Winget) { Write-Detect WinGet } else { Write-Warning 'winget is not available; skipping app installs.' }
+$wingetOk = [bool](Ensure-Winget)
+if ($wingetOk) { Write-Detect WinGet } else { Write-Warning 'winget not available, using fallbacks.' }
 
 # DETECTION + User config: Trust the PSGallery repository if it's not trusted
 if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue |
@@ -258,99 +259,49 @@ if (-not (Test-CommandExists choco)) {
 		$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1";if (Test-Path($ChocolateyProfile)) { Import-Module "$ChocolateyProfile" }
 }
 
-# DETECTION + Admin install: zoxide fuzzy shell (if not installed and shell is started in administrative mode)
-if (Test-CommandExists zoxide) {
-	Write-Detect "Zoxide"
-	Invoke-Expression (& zoxide init --cmd cd powershell | Out-String)
-	Set-Alias -Name z -Value __zoxide_z -Option AllScope -Scope Global -Force
-	Set-Alias -Name zi -Value __zoxide_zi -Option AllScope -Scope Global -Force
-} else {
-	Write-Host "❌ Zoxide command not found. Attempting to install via WinGet..." -nonewline -f Cyan
-	try {
-		winget install --id ajeetdsouza.zoxide @WingetSilentArgs
-		Write-Host "Zoxide installed successfully from WinGet. Initializing..." -ForegroundColor DarkGreen
-		Invoke-Expression (& { (zoxide init powershell | Out-String) })
-	} catch {
-		Write-Error "❌ Failed to install zoxide. Error: $_"
-		Write-Host "Trying choco instead..." -f Cyan
-		choco install zoxide -y
-		Write-Host "Zoxide installed successfully from ChocoLatey. Initializing..." -ForegroundColor DarkGreen
-		Invoke-Expression (& { (zoxide init powershell | Out-String) })
-	}
+#####################################################################
+### Install packages with provider loop (preferably in user mode) ###
+#####################################################################
+
+$WingetArgs = @('--exact','--silent','--disable-interactivity',
+                '--accept-package-agreements','--accept-source-agreements',
+                '--scope','user')
+
+$Apps = @(
+    @{ Name='Zoxide';      Cmd='zoxide';    Winget='ajeetdsouza.zoxide';            Scoop='zoxide' }
+    @{ Name='FastFetch';   Cmd='fastfetch'; Winget='Fastfetch-cli.Fastfetch';       Scoop='fastfetch' }
+    @{ Name='ImageMagick'; Cmd='magick';    Winget='ImageMagick.Q16-HDRI';          Scoop='imagemagick' }
+    @{ Name='Notepad++';   Cmd="$env:LOCALAPPDATA\Programs\Notepad++\notepad++.exe"; Winget='Notepad++.Notepad++'; Scoop='extras/notepadplusplus' }
+    @{ Name='BGInfo';      Cmd='bginfo';    Winget='Microsoft.Sysinternals.BGInfo'; Scoop='extras/bginfo' }
+)
+
+function Update-SessionPath {
+    $env:Path = ([Environment]::GetEnvironmentVariable('Path','User'),
+                 [Environment]::GetEnvironmentVariable('Path','Machine') -join ';')
 }
 
-# DETECTION + Admin install: Notepad++ (if not installed and shell is started in administrative mode)
-$np = $env:ProgramFiles + '\Notepad++\Notepad++.exe'
-if (Test-CommandExists $np) {
-	Write-Detect "Notepad++"
-} else {
-	if ($isAdmin) {
-		Write-Host "❌ Notepad++ not installed. Attempting to install via " -nonewline -f Cyan
-		try {
-			winget install --id Notepad++.Notepad++ $WingetSilentArgs
-		} catch {
-			Write-Error "❌ Failed to install Notepad++. Error: $_"
-			Write-Host "Trying choko instead..." -f Cyan
-			choco install notepadplusplus -y
-   			refreshenv
-		}
-	} else { Write-Host ("❌ Powershell must be started in elevated mode to install Notepad++.") -f Cyan }
+function Install-App {
+    param([hashtable]$App)
+
+    if (Test-CommandExists $App.Cmd) { Write-Detect $App.Name; return }
+
+    Write-Host "❌ $($App.Name) not installed. Installing..." -f Cyan
+
+    if ($script:wingetOk -and $App.Winget) {
+        winget install --id $App.Winget @WingetArgs
+        if ($LASTEXITCODE -eq 0) { Update-SessionPath; return }
+        Write-Warning "winget failed for $($App.Name) (exit $LASTEXITCODE)."
+    }
+
+    # --- Scoop fallback goes here (step 3 later) ---
+    Write-Warning "$($App.Name) was not installed."
 }
 
-# DETECTION + Admin install: BGInfo (if not installed and shell is started in administrative mode)
-if (Test-CommandExists bginfo) {
-	Write-Detect "BGInfo"
-} else {
-	if ($isAdmin) {
-		Write-Host "❌ BGInfo not installed. Attempting to install via" -nonewline -f Cyan
-		try {
-			winget install --id Microsoft.Sysinternals.BGInfo $WingetSilentArgs
-			# Launch with just bginfo64.exe or silent: bginfo /timer:0 /silent /nolicprompt
-		} catch {
-			Write-Error "❌ Failed to install BGInfo. Error: $_"
-			Write-Host "Trying choko instead..." -f Cyan
-			choco install bginfo -y
-   			refreshenv
-		}
-	} else { Write-Host ("❌ Powershell must be started in elevated mode to install BGInfo.") -f Cyan }
-}
+foreach ($app in $Apps) { Install-App $app }
 
-# DETECTION + Admin install: ImageMagick (if not installed and shell is started in administrative mode)
-if (Test-CommandExists Magick) {
-	Write-Detect "ImageMagick"
-} else {
-	if ($isAdmin) {
-		Write-Host "❌ ImageMagick not installed. Attempting to install via " -nonewline -f Cyan
-		try {
-			winget install --id ImageMagick.Q16-HDRI $WingetSilentArgs
-		} catch {
-			Write-Error "❌ Failed to install ImageMagick. Error: $_"
-			Write-Host "Trying choko instead..." -f Cyan
-			choco install imagemagick -y
-   			refreshenv
-		}
-	} else { Write-Host ("❌ Powershell must be started in elevated mode to install ImageMagick.") -f Cyan }
-}
+######################## REPLACE this old PART with apps on list over ##############################
 
-# DETECTION + Admin install: FastFetch (if not installed and shell is started in administrative mode)
-if (Test-CommandExists fastfetch) {
-	Write-Detect "FastFetch"
-} else {
-	if ($isAdmin) {
-		Write-Host "❌ FastFetch not installed. Attempting to install via " -nonewline -f Cyan
-		try {
-			winget install --id Fastfetch-cli.Fastfetch $WingetSilentArgs
-			Write-Host "FastFetch installed successfully. Initializing..." -ForegroundColor DarkGreen
-		} catch {
-			Write-Error "❌ Failed to install FastFetch. Error: $_";Write-Host "Trying choco instead..." -f Cyan
-			choco install fastfetch -y
-			refreshenv
-		}
-	} else { Write-Host ("❌ Powershell must be started in elevated mode to install FastFetch.") -f Cyan }
-}
-
-
-# DETECTION + User install: Fontget + RobotoMono Nerd Font
+#### DETECTION + User install: Fontget + RobotoMono Nerd Font ####
 If (Test-CommandExists fontget) {
 	Write-Detect "FontGet"
 	$RoboInstalled = [bool](fontget list "roboto-mono" 2>$null)
@@ -377,7 +328,7 @@ If ($RoboInstalled) {
 	}
 }
 
-#### DETECTION + Admin OR User install: Powershell 7.x
+#### DETECTION + Admin OR User install: Powershell 7.x ####
 function Install-PowerShell {
 	If ($IsAdmin) {
 		Write-Warning "PowerShell v7.x is not installed. Installing with winget Machine scope..."
@@ -399,11 +350,14 @@ if (-not (Test-CommandExists pwsh)) {
   	Write-Detect "PowerShell Core (pwsh)"
 }
 
+### Initalizations ###
+Invoke-Expression (& { (zoxide init powershell | Out-String) })
+
 ################################################################################################################
 ####### Profile creation or update if not present + download example picture and FastFetch config-file #########
 ################################################################################################################
 
-#### Try to Create Profiles for both versions of Powershell if they don't exist.
+#### Try to Create Profiles for both versions of Powershell if they don't exist. ####
 # Detect Documents redirection
 $UserShellFoldersPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
 $PersonalFolderValue = (Get-ItemProperty -Path $UserShellFoldersPath -Name "Personal").Personal
@@ -428,7 +382,7 @@ if (!(Test-Path -Path $profilePath\Microsoft.PowerShell_profile.ps1 -PathType Le
     catch { Write-Error "Failed to create or update the profile. Error: $_" }
 }
 
-#### DETECTION + User download: fastfetch example profile picture and config at %localappdata%\fastfetch if they don't exist.
+#### DETECTION + User download: fastfetch example profile picture and config at %localappdata%\fastfetch if they don't exist. ####
 function Update-Examples {
 	try {
         # Create Profile directories if they do not exist.
@@ -449,7 +403,7 @@ if (!(Test-Path -Path $FFConfig -PathType Leaf)) {
 	Update-Examples
 }
 
-#### Command to ad-hoc Update new version of profile + support-files for current version of Powershell + rename old to file+timemarker.ps1.
+#### Command to ad-hoc Update new version of profile + support-files for current version of Powershell + rename old to file+timemarker.ps1. ####
 function Update-Profile {
     try {
 		#### Test if My Documents is redirected by GPO so profiles has to be present under that folder instead
@@ -476,7 +430,7 @@ function Update-Profile {
     }
 }
 
-#### DETECTION + Admin install: Microsoft Windows Terminal for Windows 2022/10 kernel
+#### DETECTION + Admin install: Microsoft Windows Terminal for Windows 2022/10 kernel ####
 if (-not (Test-CommandExists wt)) {
 	if ($isAdmin) {
 		if ($is2022) {
