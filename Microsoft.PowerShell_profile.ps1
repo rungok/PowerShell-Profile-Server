@@ -195,6 +195,8 @@ function Ensure-Winget {
     return [bool](Get-Command winget -ErrorAction SilentlyContinue)
 }
 
+Ensure-Winget
+
 if (-not (Ensure-Winget)) {
     Write-Warning 'winget is not available; skipping app installs.'
     return
