@@ -156,15 +156,16 @@ function Ensure-Winget {
     [CmdletBinding()]
     param()
 
-    Write-Host "[1] Edition: $($PSVersionTable.PSEdition) $($PSVersionTable.PSVersion)"
-    if ($PSVersionTable.PSEdition -ne 'Desktop') { Write-Warning 'Not Windows PowerShell 5.1'; return $false }
+    # Detection works in PowerShell 5.1 and 7
+    if (Resolve-Winget) { return $true }
 
-    $exe = Resolve-Winget
-    Write-Host "[2] Resolve-Winget (before install): '$exe'"
-    if ($exe) { return $true }
+    # Bootstrap (download + Add-AppxPackage) only from Windows PowerShell 5.1
+    if ($PSVersionTable.PSEdition -ne 'Desktop') {
+        Write-Warning 'winget not found. Run this profile once in Windows PowerShell 5.1 to bootstrap it.'
+        return $false
+    }
 
-    Write-Host "[3] Starting download..."
-    $ProgressPreference = 'Continue'    # show progress so you can see it working
+    $ProgressPreference = 'SilentlyContinue'
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
     $tmp = Join-Path $env:TEMP ('winget-bootstrap-' + [guid]::NewGuid())
@@ -178,17 +179,14 @@ function Ensure-Winget {
 
         $arch = if ([Environment]::Is64BitOperatingSystem) { 'x64' } else { 'x86' }
         $deps = Get-ChildItem (Join-Path $tmp "deps\$arch") -Filter *.appx | Select-Object -ExpandProperty FullName
-        Write-Host "[5] Dependency files: $($deps -join ', ')"
 
         $bundle = Join-Path $tmp 'winget.msixbundle'
         Invoke-WebRequest "$base/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -OutFile $bundle -UseBasicParsing
-        Write-Host "[6] Bundle downloaded: $((Get-Item $bundle).Length) bytes"
 
         Add-AppxPackage -Path $bundle -DependencyPath $deps -ErrorAction Stop
-        Write-Host "[7] Add-AppxPackage finished"
     }
     catch {
-        Write-Warning "Bootstrap failed: $($_.Exception.Message)"
+        Write-Warning "WinGet Bootstrap failed: $($_.Exception.Message)"
         return $false
     }
     finally {
@@ -196,10 +194,9 @@ function Ensure-Winget {
     }
 
     for ($i = 0; $i -lt 15; $i++) {
-        if (Resolve-Winget) { Write-Host "[8] winget found"; return $true }
+        if (Resolve-Winget) { return $true }
         Start-Sleep -Seconds 2
     }
-    Write-Warning "[8] winget not found after install"
     return $false
 }
 
@@ -268,11 +265,12 @@ $WingetArgs = @('--exact','--silent','--disable-interactivity',
                 '--scope','user')
 
 $Apps = @(
-    @{ Name='Zoxide';      Cmd='zoxide';    Winget='ajeetdsouza.zoxide';            Scoop='zoxide' }
-    @{ Name='FastFetch';   Cmd='fastfetch'; Winget='Fastfetch-cli.Fastfetch';       Scoop='fastfetch' }
-    @{ Name='ImageMagick'; Cmd='magick';    Winget='ImageMagick.Q16-HDRI';          Scoop='imagemagick' }
-    @{ Name='Notepad++';   Cmd="$env:LOCALAPPDATA\Programs\Notepad++\notepad++.exe"; Winget='Notepad++.Notepad++'; Scoop='extras/notepadplusplus' }
-    @{ Name='BGInfo';      Cmd='bginfo';    Winget='Microsoft.Sysinternals.BGInfo'; Scoop='extras/bginfo' }
+    @{ Name='Zoxide';      Cmd='zoxide';    	Winget='ajeetdsouza.zoxide';            Scoop='zoxide' }
+    @{ Name='FastFetch';   Cmd='fastfetch'; 	Winget='Fastfetch-cli.Fastfetch';       Scoop='fastfetch' }
+    @{ Name='ImageMagick'; Cmd='magick';    	Winget='ImageMagick.Q16-HDRI';          Scoop='imagemagick' }
+    @{ Name='Notepad++';   Cmd="notepad++.exe"; Winget='Notepad++.Notepad++'; 			Scoop='extras/notepadplusplus' }
+    @{ Name='BGInfo';      Cmd='bginfo';    	Winget='Microsoft.Sysinternals.BGInfo'; Scoop='extras/bginfo' }
+	@{ Name='FontGet';     Cmd='fontget';   	Winget='Graphixa.FontGet'; 			 	Scoop='extras/fontget' }
 )
 
 function Update-SessionPath {
@@ -280,20 +278,55 @@ function Update-SessionPath {
                  [Environment]::GetEnvironmentVariable('Path','Machine') -join ';')
 }
 
+function Ensure-Scoop {
+    $shims = Join-Path $env:USERPROFILE 'scoop\shims'
+    if (($env:Path -split ';') -notcontains $shims) { $env:Path = "$shims;$env:Path" }
+    if (Get-Command scoop -ErrorAction SilentlyContinue) { return $true }
+
+    Write-Host "Scoop not found. Installing (user mode)..." -f Cyan
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $inst = Join-Path $env:TEMP 'scoop-install.ps1'
+        Invoke-RestMethod https://get.scoop.sh -OutFile $inst
+
+        # Scoop's installer refuses to run elevated unless told to
+        if ($isAdmin) { & $inst -RunAsAdmin } else { & $inst }
+        Remove-Item $inst -Force -ErrorAction SilentlyContinue
+    }
+    catch {
+        Write-Warning "Scoop install failed: $($_.Exception.Message)"
+        return $false
+    }
+    return [bool](Get-Command scoop -ErrorAction SilentlyContinue)
+}
+
 function Install-App {
     param([hashtable]$App)
 
     if (Test-CommandExists $App.Cmd) { Write-Detect $App.Name; return }
-
     Write-Host "❌ $($App.Name) not installed. Installing..." -f Cyan
 
+    # 1. winget
     if ($script:wingetOk -and $App.Winget) {
         winget install --id $App.Winget @WingetArgs
-        if ($LASTEXITCODE -eq 0) { Update-SessionPath; return }
-        Write-Warning "winget failed for $($App.Name) (exit $LASTEXITCODE)."
+        if ($LASTEXITCODE -ne 0) { Write-Warning "winget failed for $($App.Name) (exit $LASTEXITCODE)." }
+        Update-SessionPath
+        if (Test-CommandExists $App.Cmd) { return }
     }
 
-    # --- Scoop fallback goes here (step 3 later) ---
+    # 2. Scoop fallback
+    if ($App.Scoop -and (Ensure-Scoop)) {
+        if ($App.Scoop -match '^(?<bucket>[^/]+)/') {
+            if (-not (Test-CommandExists git)) { scoop install git }       # buckets need git
+            scoop bucket add $Matches.bucket 2>&1 | Out-Null               # harmless if it already exists
+        }
+        scoop install $App.Scoop
+        Update-SessionPath
+        $shims = Join-Path $env:USERPROFILE 'scoop\shims'
+        if (($env:Path -split ';') -notcontains $shims) { $env:Path = "$shims;$env:Path" }
+        if (Test-CommandExists $App.Cmd) { return }
+    }
+
     Write-Warning "$($App.Name) was not installed."
 }
 
@@ -301,26 +334,13 @@ foreach ($app in $Apps) { Install-App $app }
 
 ######################## REPLACE this old PART with apps on list over ##############################
 
-#### DETECTION + User install: Fontget + RobotoMono Nerd Font ####
-If (Test-CommandExists fontget) {
-	Write-Detect "FontGet"
-	$RoboInstalled = [bool](fontget list "roboto-mono" 2>$null)
-} else {
-	try {
- 	Write-Host "❌ FontGet not installed. Attempting to install" -nonewline -f Cyan
- 	winget install --id Graphixa.FontGet $WingetSilentArgs
-	} catch { 
-		Write-Error "❌ Failed to install FontGet. Error: $_";Write-Host "Trying choko instead..." -f Cyan
-		choco install nerd-fonts-robotomono -y
-	}
-	$RoboInstalled = [bool](fontget list "roboto-mono" 2>$null)
-}	
-	
+#### DETECTION + User install with FontGet: RobotoMono Nerd Font ####
+$RoboInstalled = [bool](fontget list "roboto-mono" 2>$null)	
 If ($RoboInstalled) {
 	Write-Detect "RobotoMono Nerd Font"
 } else {
 	try {
- 	Write-Host "❌ RobotoMono nerd font not installed. Attempting to install" -nonewline -f Cyan
+ 	Write-Host "❌ RobotoMono nerd font not installed. Attempting to install..." -nonewline -f Cyan
 	fontget add nerd.roboto-mono --accept-agreements --accept-defaults
 	} catch { 
 		Write-Error "❌ Failed to install RobotoMono nerd font. Error: $_";Write-Host "Trying choko instead..." -f Cyan
@@ -479,7 +499,7 @@ if (-not (Test-CommandExists wt)) {
 ######################################################################
 ##### Setting aliases spesific to PowerShell-Profile-Server Pimp #####
 ######################################################################
-New-Alias np "$env:Programfiles\Notepad++\Notepad++.exe" -Force
+New-Alias np "Notepad++.exe" -Force
 New-Alias vi np -Force
 New-Alias edit np -Force
 function hf {Get-Content (Get-PSReadlineOption).HistorySavePath}
