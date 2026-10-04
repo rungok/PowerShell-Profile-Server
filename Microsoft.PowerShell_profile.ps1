@@ -84,8 +84,17 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 	[bool] $is2025 = $true
 	
 	# Set full rightclick menu to ENABLED if not set
-	If (-not (Test-Path -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}")) {	Write-Host "❌  No full-rightclick menu enabled... Enabling..." -f Cyan;
-		New-Item -Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" -Force
+	$subKey = 'Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32'
+	$key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($subKey)
+	$isSet = $false
+	if ($key) {
+		$isSet = ($key.GetValueNames() -contains '') -and ($key.GetValue('') -eq '')
+		$key.Close()
+	}
+	if (-not $isSet) {
+		# create/set the key as empty (default 'not set' is not enough, so this DOS-command is faster because of it)
+		Write-Host "❌  No full-rightclick menu enabled... Enabling..." -f Cyan;
+		reg.exe add "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" /f /d "" /ve
 	} Else { Write-Detect "Full RightClick Menu" }
 
 	# Set compact file explorer to ENABLED
@@ -95,7 +104,7 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 		Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "UseCompactMode" -Value 1
 	} Else { Write-Detect "Compact file spacing setting" }
 
-	#### .NET method of checking registry and modifying it with a new value if the value from before isn't there or the wrong one
+	#### .NET method (fast) of checking registry and modifying it with a new value if the value from before isn't there or the wrong one
 	# Accordng to Claude this is the fastest way of doing this compared to PowerShell or MS-DOS native commands
 	# Usage: Set-RegDefault -Path 'HKCU:\Software\MyApp' -Name 'MySetting' -Value 1
 
@@ -118,8 +127,6 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 	Set-RegDefault -Path 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'MultiTaskingAltTabFilter' -Value 3
 	
 	if ($isAdmin) {
-		# Settings > Personalization > Taskbar > Widgets > Off
-		# Set-RegDefault -Path 'HKLM\Software\Policies\Microsoft\Dsh' -Name 'AllowNewsAndInterests' -Value 0
 		# Long paths in file explorer
 		Set-RegDefault -Path 'HKLM\SYSTEM\CurrentControlSet\Control\FileSystem' -Name 'LongPathsEnabled' -Value 1
 	}
@@ -129,8 +136,9 @@ If (([Environment]::OSVersion).Version.Build -ge 22000) {
 ### Test for and install packageprovider + some apps (preferably in user mode) ###
 ##################################################################################
 
-# Set TLS v1.2 as default https protocol
+# Set TLS v1.2 as default https protocol for all web downloads in this script
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 # Define standard parameters for non-interactive automation scripts (Usage Example: winget install "Git.Git" $WingetSilentArgs)
 $WingetSilentArgs = @('--exact','--silent','--disable-interactivity','--accept-package-agreements','--accept-source-agreements','--scope','user')
 $WingetSilentArgsAdmin = @('--exact','--silent','--disable-interactivity','--accept-package-agreements','--accept-source-agreements','--scope','machine')
