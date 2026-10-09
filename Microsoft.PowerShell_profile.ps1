@@ -264,9 +264,9 @@ if (-not (Test-CommandExists choco)) {
 		$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1";if (Test-Path($ChocolateyProfile)) { Import-Module "$ChocolateyProfile" }
 }
 
-#####################################################################
-### Install packages with provider loop (preferably in user mode) ###
-#####################################################################
+######################################################################################################################################
+##  Install packages array (installs app-list in admin-mode of terminal started in admin-mode and tries in user-mode if not admin)  ##
+######################################################################################################################################
 
 $WingetArgs = @('--exact','--silent','--disable-interactivity',
                 '--accept-package-agreements','--accept-source-agreements',
@@ -343,7 +343,7 @@ foreach ($app in $Apps) { Install-App $app }
 ######################## REPLACE this old PART with apps on list over ##############################
 
 #### DETECTION + User install with FontGet: RobotoMono Nerd Font ####
-$RoboInstalled = [bool](fontget list "roboto-mono" 2>$null)	
+$RoboInstalled = [bool](([System.Drawing.Text.InstalledFontCollection]::new()).Families.Name -match "roboto")
 If ($RoboInstalled) {
 	Write-Detect "RobotoMono Nerd Font"
 } else {
