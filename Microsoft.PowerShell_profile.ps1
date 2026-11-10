@@ -1,5 +1,5 @@
 #>-------------------------------------------------------------------------------------------------
-$tit = 'Pimped PowerShell-Profile for Windows v4.1 by GOKS0R'
+$tit = 'Pimped PowerShell-Profile for Windows v4.2 by GOKS0R'
 $githubUser = 'rungok'
 $FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path
 $FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\harley7.png' # logopath
@@ -233,35 +233,12 @@ Import-Module -Name Sixel
 # DETECTION: .net v4.8 Framework
 $dotnet = (Get-ItemPropertyValue -LiteralPath 'HKLM:SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -Name Release) -ge 528040
 if ($dotnet) {
-    Write-Detect ".NET Framework v4.8 or higher"
+    Write-Detect ".NET Framework v4.5 or higher"
 } else {
-    Write-Host "❌ .NET Framework Version 4.8 or later is not detected. Chocolatey packet manager needs .NET runtime libraries v4.8, and will try to install it automaticly." -f Cyan
+    Write-Host "❌ .NET Framework Version 4.5 or later is not detected. Scoop fallback packet manager needs .NET runtime libraries v4.8, and will try to install it automatically." -f Cyan
     If ((!$is2022) -and ($isAdmin)) {
     	Write-Host "❌ Server 2019 detected. Unfortunately .NET v4.8 upgrade on server 2019 triggers some registry fixes that requires a FULL SERVER RESTART to activate." -f Magenta
     }
-}
-
-# DETECTION + Admin install: Chocolatey (if not installed and shell is started in administrative mode)
-if (-not (Test-CommandExists choco)) {
-	Write-Host ("❌ Chocolatey packet manager not installed...") -nonewline -f Cyan
-	if ($isAdmin) {
-		Write-Host ("Trying to install...") -nonewline -f Cyan
-		Set-ExecutionPolicy Bypass -Scope Process -Force
-		[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-		Try {
-			iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-			} catch {
-			Write-Host ("Something is blocking downloads of ps1-files from the net, trying winget method..:") -nonewline -f Red
-			winget install --id chocolatey.chocolatey $WingetSilentArgs
-			$env:Path +=  ";$env:allusersprofile\chocolatey\bin"
-			$env:ChocolateyInstall = $env:allusersprofile + "\chocolatey"
-		}	
-		$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1";if (Test-Path($ChocolateyProfile)) { Import-Module "$ChocolateyProfile" }
-  		refreshenv
-		} else { Write-Host ("❌ Terminal must be started in elevated mode to install Chocolatey. Some extensions will not be activated until this is done.") -f Cyan }
-	} else {
-		Write-Detect "Chocolatey packet manager"
-		$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1";if (Test-Path($ChocolateyProfile)) { Import-Module "$ChocolateyProfile" }
 }
 
 ######################################################################################################################################
@@ -351,7 +328,7 @@ If ($RoboInstalled) {
 	fontget add nerd.roboto-mono --accept-agreements --accept-defaults
 	} catch { 
 		Write-Error "❌ Failed to install RobotoMono nerd font. Error: $_";Write-Host "Trying choko instead..." -f Cyan
-		choco install nerd-fonts-robotomono -y
+		scoop install nerd-fonts-robotomono -y
 	}
 }
 
@@ -889,8 +866,9 @@ Use 'Show-Help' to display this help message.
 #
 #	Changes last few versions
 #
-#	Version 4.0
-# 	- Revamped entire script with winget install of apps in user mode as primary (falls back to Chocolatey in admin mode if it doesn't work)
+#	Version 4.2
+#	- Remove Chocolatey code and adding instructions on how to configure Joker faded wallpaper.
+# 	- Revamped entire script with winget install of apps in user mode as primary (falls back to Scoop if WinGet doesn't work. Scoop does not require Admin rights.)
 #
 #	Version 3.1
 #	- Reconstructed example theme to a Joker and Harlequin Theme, where JokerSmoking.png is suppose to be config'ed as background pic in terminal.
