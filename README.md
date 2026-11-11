@@ -46,9 +46,9 @@ This script is tested on:
 After running the script. That means starting the OS-included Powershell (preferably in Administrative mode),
 you need to manually change these settings by pressing CTRL + , in Windows Terminal:
 
-1. Defaults -> Appearance -> Text -> Color scheme -> Tango Dark (or some other with black background)
+1. Defaults -> Appearance -> Text -> Color scheme -> <b>Tango Dark</b> (or some other with black background)
 2. Font Face -> <b>Robotomono</b> (Nerd font with icon set for Oh-My-Posh)
-3. Scroll down to "Background image", browse to %localappdata%\fastfetch and choose background picture to JokerSmokingT.png and set these options: 
+3. Scroll down to "Background image", browse to %localappdata%\fastfetch and choose background picture <b>JokerSmokingT.png</b> and set these options: 
    Background image stretch mode -> None
    Background image alignment -> Top right
    Background image opacity -> 10%
