@@ -25,8 +25,7 @@ Execute the following command in an elevated PowerShell window to install the Po
 -----------------------------------------------------------------------------------------------------------------------------
 
 ## 🎨 PreView
-<img width="1231" height="1081" alt="PimpedProfile1" src="https://github.com/user-attachments/assets/ac80cbb5-69bc-47c2-9033-32ed1a1610bf" />
-
+<img width="1717" height="964" alt="image" src="https://github.com/user-attachments/assets/b8289d3d-36a8-4559-8964-8092336b8b1a" />
 
 When it has installed all its components, your Powershell Terminal will look and feel almost as good as a Linux terminal.
 This version (compared to Titus's version) is tailored to work better for Windows Server and simplified to be only 1 significant powershell-script you can paste in
@@ -47,9 +46,15 @@ This script is tested on:
 After running the script. That means starting the OS-included Powershell (preferably in Administrative mode),
 you need to manually change these settings by pressing CTRL + , in Windows Terminal:
 
-1. Defaults -> Appearance -> Text -> Font Face -> <b>Robotomono</b> (Nerd font with icon set for Oh-My-Posh)
-2. Defaults ->	Advanced -> Text antialiasing -> <b>ClearType</b> (important for visual quality)
-3. Save. DONE!
+1. Defaults -> Appearance -> Text -> Color scheme -> Tango Dark (or some other with black background)
+2. Font Face -> <b>Robotomono</b> (Nerd font with icon set for Oh-My-Posh)
+3. Scroll down to "Background image", browse to %localappdata%\fastfetch and choose background picture to JokerSmokingT.png and set these options: 
+   Background image stretch mode -> None
+   Background image alignment -> Top right
+   Background image opacity -> 10%
+4. Save
+5. Defaults ->	Advanced -> Text antialiasing -> <b>ClearType</b> (important for visual quality)
+6. Save
    
 ## Customize this profile
 
