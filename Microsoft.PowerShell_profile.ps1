@@ -1,10 +1,10 @@
 #>-------------------------------------------------------------------------------------------------
-$tit = 'Pimped PowerShell-Profile for Windows v4.2 by GOKS0R'
+$tit = 'Pimped PowerShell-Profile for Windows v4.3 by GOKS0R'
 $githubUser = 'rungok'
 $FFConfig = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\frames.jsonc' # Config-path
-$FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\harley7.png' # logopath
-$FFlogoWidth = 60  # Width  in number of chars
-$FFlogoHeight = 35 # Height in number of chars
+$FFlogo = Join-Path -Path $env:localappdata -ChildPath 'fastfetch\harley111.png' # logopath
+$FFlogoWidth = 55  # Width  in number of chars
+$FFlogoHeight = 40 # Height in number of chars
 #
 #  This script will try to install Windows Terminal (even on Windows Server 2022),
 #  nice ANSI-prompt and other enhancments/alias so even some Linux-commands will work.
@@ -64,7 +64,8 @@ function Write-Detect {
 		} else {
 		Write-host "v" -nonewline -b DarkGreen -f White
 	} 
-    Write-host " $Software detected.                     "  -f Green
+    Write-host " $Software" -nonewline -f white
+	Write-host " detected." -f Green
 	# Write-host "$([char]0x1b)[1F" # -nonewline
 }
 
@@ -254,7 +255,6 @@ $Apps = @(
     @{ Name='FastFetch';   Cmd='fastfetch'; 	Winget='Fastfetch-cli.Fastfetch';       Scoop='fastfetch' }
     @{ Name='ImageMagick'; Cmd='magick';    	Winget='ImageMagick.Q16-HDRI';          Scoop='imagemagick' }
     @{ Name='Notepad++';   Cmd="notepad++.exe"; Winget='Notepad++.Notepad++'; 			Scoop='extras/notepadplusplus' }
-	@{ Name='FontGet';     Cmd='fontget';   	Winget='Graphixa.FontGet'; 			 	Scoop='extras/fontget' }
 )
 
 function Update-SessionPath {
@@ -325,10 +325,11 @@ If ($RoboInstalled) {
 } else {
 	try {
  	Write-Host "❌ RobotoMono nerd font not installed. Attempting to install..." -nonewline -f Cyan
-	fontget add nerd.roboto-mono --accept-agreements --accept-defaults
+    & ([scriptblock]::Create((iwr 'https://to.loredo.me/Install-NerdFont.ps1'))) -Confirm:$false -Name roboto-mono
+	Write-Host ("installed!") -f green	
+	Write-Host ("There is no command that can change the font for you in Powershell. Change to RobotoMono in Terminal settings.") -f green
 	} catch { 
-		Write-Error "❌ Failed to install RobotoMono nerd font. Error: $_";Write-Host "Trying choko instead..." -f Cyan
-		scoop install nerd-fonts-robotomono -y
+		Write-Error "❌ Failed to install RobotoMono nerd font. Error: $_"
 	}
 }
 
@@ -395,9 +396,9 @@ function Update-Examples {
 		$JKPath = Join-Path -Path $FFPath -ChildPath "JokerSmoking.png"
      	Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/frames.jsonc -OutFile $FFConfig
         Write-Host "FastFetch config-file @ [$FFConfig] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
-		Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/harley7.png -OutFile $FFlogo
+		Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/harley111.png -OutFile $FFlogo
         Write-Host "FastFetch profile-pic @ [$FFlogo] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
-		Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/JokerSmoking.png -OutFile $JKPath
+		Invoke-RestMethod https://raw.githubusercontent.com/rungok/PowerShell-Profile-Server/refs/heads/main/JokerSmokingT.png -OutFile $JKPath
         Write-Host "FastFetch profile-pic @ [$FFPath\JokerSmoking.png] has been created and will be used by FastFetch on every Terminal/Powershell-window launch." -f Cyan
     }
     catch { Write-Error "Failed to create or update $FFConfig, $JKPath and/or $FFLogo. Error: $_" }
@@ -689,9 +690,10 @@ If ($PSVersionTable.PSVersion.Major -eq 7) {
 	Register-ArgumentCompleter -Native -CommandName dotnet -ScriptBlock $scriptblock
 }
 
-########################################################################
-##### Special Pink Prompt to replace the old Oh-My-Posh bloatware ##### 
-########################################################################
+#############################################################################
+##>  Pimped Prompt (Designed inspied from Oh-My-Posh M365Princess theme)  <##
+#############################################################################
+
 # --- Colors (tweak these RGB triples to taste) ---
 $Esc = [char]27
 
@@ -754,7 +756,7 @@ function prompt {
 
     "$cap$seg1$arrow1$seg2$arrow2$seg3$arrow3 "
 }
-Write-Detect "Pimped-Bash-Prompt"
+Write-Detect "Pimped-Prompt"
 
 # Write-host "$([char]0x1b)[1F" -nonewline
 Write-host "$([char]0x1b)[9A" -nonewline
@@ -866,8 +868,9 @@ Use 'Show-Help' to display this help message.
 #
 #	Changes last few versions
 #
-#	Version 4.2
-#	- Remove Chocolatey code and adding instructions on how to configure Joker faded wallpaper.
+#	Version 4.3
+#	- Removed Fontget in an attempt to reduce the attack-vector from unchecked community software (Installing directly from Nerdfont repo instead).
+#	- Replacing Chocolatey packet manager with Scoop and adding instructions on how to configure Joker faded wallpaper.
 # 	- Revamped entire script with winget install of apps in user mode as primary (falls back to Scoop if WinGet doesn't work. Scoop does not require Admin rights.)
 #
 #	Version 3.1
